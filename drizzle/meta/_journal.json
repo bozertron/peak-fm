@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789751825542,
+      "tag": "0000_peak_cloud_domain",
+      "breakpoints": true
+    }
+  ]
+}

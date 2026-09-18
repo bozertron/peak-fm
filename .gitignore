@@ -16,3 +16,7 @@ node_modules
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local dev database credentials
+.env.local
+smoke-*.png
