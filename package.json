@@ -12,7 +12,8 @@
     "db:migrate:print": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs --print",
     "db:generate": "drizzle-kit generate",
     "db:check": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs --check",
-    "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.mjs"
+    "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.mjs",
+    "smoke": "node scripts/smoke-test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
