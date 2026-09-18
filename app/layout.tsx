@@ -3,8 +3,9 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Peak — Good gear. Good people. GREAT Community!',
-  description: 'A trusted circle for borrowing equipment from people you know.',
+  title: 'Peak — your local market',
+  description:
+    'Buy, sell, rent, trade, find and plan with the people around you. One local market, one contact list, and the paperwork at the end.',
   generator: 'v0.app',
   icons: {
     icon: [

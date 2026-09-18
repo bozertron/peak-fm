@@ -9,7 +9,10 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "db:migrate": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs",
-    "db:migrate:print": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs --print"
+    "db:migrate:print": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs --print",
+    "db:generate": "drizzle-kit generate",
+    "db:check": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs --check",
+    "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -36,6 +39,7 @@
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
     "jiti": "^2.7.0",
     "postcss": "^8.5",
     "tailwindcss": "^4.3.3",

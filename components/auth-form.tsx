@@ -41,9 +41,9 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     <main className="auth-page">
       <section className="auth-card" aria-labelledby="auth-title">
         <Link className="auth-brand" href="/">peak</Link>
-        <div className="auth-eyebrow">THE CHAMPAGNE OF COMMUNITY COMMERCE</div>
-        <h1 id="auth-title">{isSignUp ? 'Join your circle.' : 'Welcome back.'}</h1>
-        <p className="auth-lede">{isSignUp ? 'Good gear. Good people. GREAT community.' : 'Sign in to borrow and buy from people you know.'}</p>
+        <div className="auth-eyebrow">YOUR LOCAL MARKET</div>
+        <h1 id="auth-title">{isSignUp ? 'Join your local market.' : 'Welcome back.'}</h1>
+        <p className="auth-lede">{isSignUp ? 'Buy, sell, rent, trade, find and plan — with the people around you.' : 'Sign in to pick up where you left off.'}</p>
         <form onSubmit={handleSubmit} className="auth-form">
           {isSignUp && <label>Name<input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required /></label>}
           <label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" required /></label>
@@ -51,7 +51,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           {error && <p className="auth-error" role="alert">{error}</p>}
           <button className="primary-button auth-submit" type="submit" disabled={loading}>{loading ? 'Please wait…' : isSignUp ? 'Create account' : 'Sign in'} <span>→</span></button>
         </form>
-        <p className="auth-switch">{isSignUp ? 'Already in the circle?' : 'New to Peak?'} <Link href={isSignUp ? '/sign-in' : '/sign-up'}>{isSignUp ? 'Sign in' : 'Create an account'}</Link></p>
+        <p className="auth-switch">{isSignUp ? 'Already have an account?' : 'New to Peak?'} <Link href={isSignUp ? '/sign-in' : '/sign-up'}>{isSignUp ? 'Sign in' : 'Create an account'}</Link></p>
       </section>
     </main>
   )
