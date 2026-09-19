@@ -176,7 +176,11 @@ See `OPEN-DECISIONS.md`. **Do not guess these in code.**
 - **18 call-to-action links still 404.** Each is owned by a ticket and listed
   in `KNOWN_MISSING` in `scripts/check-links.mjs`; `app/not-found.tsx` catches
   them meanwhile. The list may only shrink.
-- `beta.invite_only` is seeded **on** but enforced **nowhere** (PEAK-240).
+- `beta.invite_only` is seeded **on** and **is enforced** at the real sign-up
+  endpoint (PEAK-240, DONE). One named hole remains: the form's wire
+  transport at `components/auth-form.tsx:71` is implemented and its header
+  name proven aligned with the server, but no test observes the attachment.
+  First item of the deferred Wave 1b.
 - `feature_flag.rollout` exists as a column; only the boolean is evaluated
   (PEAK-241).
 - `beta_feedback` and `moderation_report` are readable and resolvable in admin,
