@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+import '../auth.css'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { AuthForm } from '@/components/auth-form'

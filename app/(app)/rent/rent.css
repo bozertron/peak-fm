@@ -1,0 +1,21 @@
+/* ===========================================================================
+   Rent — the three creation options
+
+   Owned by the ticket(s) that build this surface. `app/globals.css` holds the
+   design tokens and the SHARED primitives (buttons, notices, status chips,
+   rows, tables, forms) and belongs to the sequential registrar — put
+   surface-specific rules here instead, so parallel agents do not contend on
+   one stylesheet.
+
+   Imported by: app/(app)/rent/page.tsx
+   =========================================================================== */
+
+/* --- Rent options -------------------------------------------------------- */
+
+.option-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(272px,1fr));gap:16px;margin-bottom:12px}
+.option-card{position:relative;background:var(--snow);border:1px solid var(--line);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:10px}
+.option-card-accent{border-color:var(--forest);box-shadow:0 0 0 1px var(--forest)}
+.option-card h3{font:400 21px var(--font-sans);letter-spacing:-.02em}
+.option-card p{color:var(--slate);font-size:13px;margin:0;line-height:1.6}
+.option-card .text-link{margin-top:auto}
+.option-number{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--wood);color:#fff;font-size:12px;font-weight:700}

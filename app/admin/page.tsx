@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import './admin.css'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'

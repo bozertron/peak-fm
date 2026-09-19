@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import './rent.css'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { getCurrentMarket, isEnabled } from '@/lib/queries/market'

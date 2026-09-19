@@ -15,9 +15,8 @@ Prisma, NextAuth and Stripe Connect — **none of which are in this repository**
 | ORM | **Drizzle 0.45**, `pg-core` |
 | Migrations | `drizzle-kit generate` → `drizzle/*.sql`, applied by `scripts/db-migrate.mjs` |
 | Auth | **Better Auth 1.7**, email + password, Postgres-backed |
-| Styling | Hand-written CSS in `app/globals.css` with CSS custom properties |
+| Styling | Hand-written CSS in `app/globals.css`. **No Tailwind** — see §1.2 |
 | Fonts | Self-hosted Commissioner (variable) + Libre Baskerville for the wordmark |
-| Map | Leaflet + OSM raster tiles (`components/okanagan-map.tsx`) |
 
 ### 1.1 Next.js 16 specifics that bite
 
@@ -30,20 +29,21 @@ Read `node_modules/next/dist/docs/` before writing code. In particular:
 - **Server Functions are reachable by direct POST**, so authorization belongs
   inside the function, never only in the page that renders the button.
 
-### 1.2 Tailwind is configured but not active — OPEN DECISION
+### 1.2 There is no Tailwind, and that is settled
 
-`postcss.config.mjs` loads `@tailwindcss/postcss`, and `components.json`
-describes a shadcn setup. But **`app/globals.css` never imports Tailwind**, so
-**no utility classes are generated at all**.
+Tailwind's PostCSS plugin was configured and `components.json` described a
+shadcn setup — but **`app/globals.css` never imported Tailwind**, so no utility
+classes were generated at all. The single shadcn component in the tree was
+written entirely in Tailwind classes, would have rendered unstyled, and was
+imported nowhere.
 
-Consequence: `components/ui/button.tsx` is written entirely in Tailwind classes
-and would render unstyled even if it were imported. It is currently imported
-nowhere.
+Decision **D2** closed as *remove* on 2026-09-19. Deleted: `tailwindcss`,
+`@tailwindcss/postcss`, `components.json`, `postcss.config.mjs`,
+`components/ui/button.tsx`, `lib/utils.ts`, and the four packages only those
+two files used.
 
-Per rule 9 of `tickets/doctrine/PROHIBITED.txt`, this orphan was not deleted.
-Giving it a home requires a project-wide decision, recorded as **D2** in
-`tickets/peak-cloud/OPEN-DECISIONS.md`. Everything scaffolded so far uses the
-hand-written CSS system, which works.
+**Styling means writing CSS in `app/globals.css`.** Reintroducing a utility
+framework is a new decision and a migration ticket, not a drive-by import.
 
 ## 2. Rendering and route map
 
@@ -68,8 +68,7 @@ app/
 
 Every surface is a **Server Component** that queries Postgres directly through
 `lib/queries/*`. Client components exist only where interaction demands it:
-`peak-header.tsx`, `account-form.tsx`, `admin-controls.tsx`, `auth-form.tsx`,
-`okanagan-map.tsx`.
+`peak-header.tsx`, `account-form.tsx`, `admin-controls.tsx`, `auth-form.tsx`.
 
 All routes render dynamically (`ƒ`) because they read the session.
 
@@ -166,10 +165,15 @@ running app.
 
 That is not a defect on Vercel and not fatal elsewhere, but it is a live signal
 about an undecided question: **where does this deploy?** Recorded as **D3** in
-`tickets/peak-cloud/OPEN-DECISIONS.md`. The component was not deleted.
+`tickets/peak-cloud/OPEN-DECISIONS.md`.
+
+`@vercel/analytics` was deliberately **kept** through the 2026-09-19 cleanup,
+unlike the other orphans: it is genuinely imported by `app/layout.tsx` and
+whether it belongs depends entirely on D3. Answer D3 and it either stays or
+goes in one line.
 
 ## 8. What was withdrawn
 
 The Tauri native-first architecture (AREA-112) is withdrawn. A native wrapper is
 not refused, only re-sequenced: it becomes a client of the cloud API rather than
-the architecture. Full reasoning: `tickets/archive/SUPERSESSION-LEDGER.md` §1.1.
+the architecture. Full reasoning: `tickets/HISTORY.md` §1.1.

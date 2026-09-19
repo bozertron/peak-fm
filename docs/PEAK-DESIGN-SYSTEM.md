@@ -2,20 +2,50 @@
 
 **Status:** Implemented in `app/globals.css`. **Last updated:** 2026-09-18
 
-Supersedes `docs/archive/PEAK-AESTHETIC-SYSTEM.md`, which described a Tailwind
-config and a component library that were **never built** — the palette in it
-does not match the one actually shipping.
+The previous aesthetic document described a Tailwind config and a component
+library that were **never built**, with a palette that did not match what
+actually shipped. It was deleted on 2026-09-19. This file describes the system
+that is really in the tree.
 
-## Ownership
+## Ownership — read this before adding a style
 
-`app/globals.css` is the shared design surface. Per the anti-clobber rule in
-`tickets/doctrine/AREA-107-agent-orchestration-protocol.md`, it belongs to the
-**sequential registrar**. Parallel builder agents must not edit it.
+Stylesheets are split so that parallel agents do not contend on one file. A
+pressure test of the backlog found `app/globals.css` contended by **16
+tickets**, which was the worst serialization point in the whole plan.
+
+| File | Holds | Owner |
+|---|---|---|
+| `app/globals.css` | tokens, base, header, and the shared primitives — buttons, notices, empty states, status chips, filters, listing cards, rows, stats, tables, forms | **Registrar only** |
+| `app/(app)/home.css` | the landing pitch | the landing ticket |
+| `app/(app)/rent/rent.css` | the three rental creation options | PEAK-260/261/262 |
+| `app/(app)/communicate/communicate.css` | inbox, threads, bulletin | PEAK-300 |
+| `app/admin/admin.css` | the operations dashboard | PEAK-241/242/243 |
+| `app/auth.css` | sign in and sign up | PEAK-240 |
+
+**Your surface gets its own stylesheet**, next to its page and imported by it.
+Create `app/(app)/<surface>/<surface>.css` when you first need one.
+
+Reach for `globals.css` only to add a primitive that genuinely belongs to every
+surface, and then ask the registrar. **Do not inline styles to dodge the
+question** — that is how a design system dies.
+
+Dark-mode and responsive rules for a surface live in that surface's file, in
+their own media queries.
 
 ## Approach
 
-Hand-written CSS with custom properties and semantic class names. Not Tailwind
-— see `PEAK-ARCHITECTURE.md` §1.2 and open decision **D2**.
+Hand-written CSS with custom properties and semantic class names.
+
+**Not Tailwind, and this is now settled.** Tailwind's PostCSS plugin was
+configured but `globals.css` never imported it, so it generated zero utility
+classes; the one shadcn component in the tree was therefore unstyled and
+unreferenced. Decision **D2** closed as *remove* on 2026-09-19, and the whole
+stack — `tailwindcss`, `@tailwindcss/postcss`, `components.json`,
+`postcss.config.mjs`, `@base-ui/react`, `class-variance-authority`, `clsx`,
+`tailwind-merge` — went with it.
+
+Adding a component means writing CSS in this file. If you want a utility
+framework back, that is a new decision and a migration ticket, not a drive-by.
 
 Roughly 340 lines, organised by section, covering every class the app uses.
 

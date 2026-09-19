@@ -1,8 +1,24 @@
 # [PEAK-203] Admin dashboard for beta operations
 
-- Priority: P0 · Area: Admin · Status: **DONE — verified**
-- Dependencies: PEAK-200, PEAK-204
-- Risk: security / operations
+|  |  |
+|---|---|
+| **Wave** | — |
+| **Status** | **DONE — verified** |
+| **Area** | Admin |
+| **Depends on** | PEAK-200, PEAK-204 |
+| **Blocks** | PEAK-240 … PEAK-243 |
+| **Blocked by decision** | — |
+| **Files you own** | `app/admin/**`, `lib/queries/admin.ts` |
+| **Risk** | security / operations |
+
+> **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
+> `lib/db/schema/index.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`,
+> `app/layout.tsx`, `package.json` and `drizzle.config.ts` belong to the
+> sequential registrar.
+> `components/composer/**` becomes registrar-owned **once PEAK-222 lands**, and
+> `components/thread/registry.ts` **once PEAK-300 lands** — until then they
+> belong to the ticket building them. Surface-specific CSS goes in your
+> surface's own stylesheet, never in `globals.css`.
 
 ## Intent
 The product goes to beta testers on a URL. Give the operator a way to see what

@@ -1,2 +1,0 @@
-[2m2026-09-18T11:47:25.098Z[0m [31mERROR[0m [1m[Better Auth]:[0m Could not validate the database schema. Check your database connection.
-⨯ error: no PostgreSQL user name specified in startup packet

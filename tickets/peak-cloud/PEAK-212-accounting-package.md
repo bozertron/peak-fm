@@ -1,8 +1,24 @@
 # [PEAK-212] Accounting Package export
 
-- Priority: P1 · Area: Buy / Sell · Status: OPEN — **partly blocked by D5**
-- Dependencies: PEAK-230, PEAK-232
-- Risk: legal / data
+|  |  |
+|---|---|
+| **Wave** | **3** |
+| **Status** | OPEN — **tax fields blocked by D5** |
+| **Area** | Buy / Sell |
+| **Depends on** | PEAK-230, PEAK-232 |
+| **Blocks** | PEAK-310 |
+| **Blocked by decision** | **D5** (tax treatment only) |
+| **Files you own** | `lib/accounting/**` |
+| **Risk** | legal / data |
+
+> **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
+> `lib/db/schema/index.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`,
+> `app/layout.tsx`, `package.json` and `drizzle.config.ts` belong to the
+> sequential registrar.
+> `components/composer/**` becomes registrar-owned **once PEAK-222 lands**, and
+> `components/thread/registry.ts` **once PEAK-300 lands** — until then they
+> belong to the ticket building them. Surface-specific CSS goes in your
+> surface's own stylesheet, never in `globals.css`.
 
 ## Intent
 "When the buyer finishes the purchase, they can go into their Buy History panel
@@ -54,3 +70,26 @@ Golden-file tests for CSV and PDF. A test proving the empty-sources case fails.
 
 ## Rollback
 Behind `accounting.package`.
+
+---
+
+## Definition of done
+
+Every one of these, with **actual output pasted** — rule 6 of
+`../doctrine/PROHIBITED.txt` does not accept an assertion:
+
+```bash
+pnpm lint         # once PEAK-207 lands
+pnpm typecheck
+pnpm build
+pnpm test         # once PEAK-206 lands
+pnpm db:check     # all tables verified
+pnpm check:links  # no unowned dead links
+```
+
+Plus this ticket's own **Verification evidence** above.
+
+If your ticket creates a route, **delete its line from `KNOWN_MISSING` in
+`scripts/check-links.mjs` in the same commit.** If it links to a route that
+does not exist yet, add the line with your ticket number. That list may only
+shrink.

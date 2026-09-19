@@ -1,0 +1,27 @@
+/* ===========================================================================
+   Auth — sign in and sign up
+
+   Owned by the ticket(s) that build this surface. `app/globals.css` holds the
+   design tokens and the SHARED primitives (buttons, notices, status chips,
+   rows, tables, forms) and belongs to the sequential registrar — put
+   surface-specific rules here instead, so parallel agents do not contend on
+   one stylesheet.
+
+   Imported by: app/sign-in/page.tsx, app/sign-up/page.tsx
+   =========================================================================== */
+
+/* --- Auth ---------------------------------------------------------------- */
+
+.auth-page{min-height:100vh;display:grid;place-items:center;padding:24px}
+.auth-card{width:min(440px,100%);padding:40px;border:1px solid var(--line);border-radius:12px;background:var(--snow);box-shadow:var(--shadow)}
+.auth-card .wordmark,.auth-brand{display:inline-block;margin-bottom:46px;font-size:30px;text-decoration:none}
+.auth-eyebrow{color:var(--wood);font:500 10px var(--font-sans);letter-spacing:.16em;margin-bottom:14px}
+.auth-card h1{font:400 34px var(--font-sans);letter-spacing:-.04em}
+.auth-copy,.auth-lede{color:var(--slate);font-size:13px;line-height:1.6}
+.auth-form{display:grid;gap:15px;margin-top:26px}
+.auth-form label{display:grid;gap:7px;font-size:11px;font-weight:700}
+.auth-form input{border:1px solid var(--line);background:var(--cream);border-radius:7px;padding:12px;outline-color:var(--forest)}
+.auth-submit{border:0;border-radius:6px;background:var(--forest);color:#fff;padding:13px;font-size:12px;font-weight:700}
+.auth-submit:disabled{opacity:.55;cursor:not-allowed}
+.auth-error{color:var(--burgundy);font-size:11px}
+.auth-switch{border-top:1px solid var(--line);margin-top:24px;padding-top:18px;color:var(--slate);font-size:11px;text-align:center}

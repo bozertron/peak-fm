@@ -1,8 +1,24 @@
 # [PEAK-202] Eight-surface app shell
 
-- Priority: P0 · Area: Foundation · Status: **DONE — verified**
-- Dependencies: PEAK-200
-- Risk: UX / accessibility
+|  |  |
+|---|---|
+| **Wave** | — |
+| **Status** | **DONE — verified** |
+| **Area** | Foundation |
+| **Depends on** | PEAK-200 |
+| **Blocks** | every surface ticket |
+| **Blocked by decision** | — |
+| **Files you own** | `app/(app)/**`, `components/surface.tsx`, `components/account-graphic.tsx` |
+| **Risk** | UX / accessibility |
+
+> **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
+> `lib/db/schema/index.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`,
+> `app/layout.tsx`, `package.json` and `drizzle.config.ts` belong to the
+> sequential registrar.
+> `components/composer/**` becomes registrar-owned **once PEAK-222 lands**, and
+> `components/thread/registry.ts` **once PEAK-300 lands** — until then they
+> belong to the ticket building them. Surface-specific CSS goes in your
+> surface's own stylesheet, never in `globals.css`.
 
 ## Intent
 Replace the single-page demo — 80 dense lines containing all four old

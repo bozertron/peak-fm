@@ -31,27 +31,25 @@ error.
 
 ---
 
-## D2 — Tailwind and shadcn: adopt or remove
+## D2 — Tailwind and shadcn *(CLOSED 2026-09-19 — remove)*
 
-**Decides:** the user.
-**Blocks:** nothing today. Blocks any new shadcn component.
+**Decided by:** the user. **Resolution:** remove.
 
-`postcss.config.mjs` loads `@tailwindcss/postcss` and `components.json`
-describes a shadcn `base-nova` setup — but **`app/globals.css` never imports
-Tailwind, so no utility classes are generated at all**.
+Tailwind's PostCSS plugin was configured and `components.json` described a
+shadcn setup, but `app/globals.css` never imported Tailwind, so **no utility
+classes were generated at all**. The one shadcn component in the tree was pure
+Tailwind, would have rendered unstyled, and was imported nowhere.
 
-Consequence: `components/ui/button.tsx` is pure Tailwind and would render
-unstyled even if imported. It is imported nowhere.
+Removed: `components/ui/button.tsx`, `lib/utils.ts`, `components.json`,
+`postcss.config.mjs`, and the packages only those files used —
+`tailwindcss`, `@tailwindcss/postcss`, `@base-ui/react`,
+`class-variance-authority`, `clsx`, `tailwind-merge`.
 
-Per rule 9 it was not deleted. Everything scaffolded uses the hand-written CSS
-system, which works and is documented in `docs/PEAK-DESIGN-SYSTEM.md`.
+**Peak commits to the hand-written CSS system** in `app/globals.css`, documented
+in `docs/PEAK-DESIGN-SYSTEM.md`. Adding a component means writing CSS there.
 
-**Options:**
-1. **Remove** Tailwind, shadcn and `button.tsx`. Commit to hand-written CSS.
-2. **Adopt** Tailwind: add `@import "tailwindcss"`, define the theme from the
-   existing tokens, migrate ~340 lines of CSS and 14 components.
-3. **Leave as is** — but then `button.tsx` stays orphaned, which rule 9 dislikes
-   and which will confuse every future agent exactly as it confused AREA-112.
+Reintroducing a utility framework is a **new decision and a migration ticket**,
+not a drive-by import. Do not add a shadcn component.
 
 ---
 
