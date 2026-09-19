@@ -40,31 +40,71 @@
  * than assuming it: see the barrier below.
  *
  * HOW THE OVERLAP IS FORCED, AND WHY IT IS NOT FLAKY
- * Firing both calls with `Promise.all` would be a race, but a race whose
- * interleaving is a scheduling accident. This file removes the accident. A
- * separate client holds `SELECT ... FOR UPDATE` on the invite row (an open
- * transaction), the redemption attempts are dispatched, and the test then WAITS
- * until Postgres reports — through `pg_blocking_pids`, straight from
- * `pg_stat_activity` — that every attempt is blocked on that row lock. Only then
- * is the gate committed. So on every run, at least two backends are provably
- * inside the same row's update path at the same moment, and `waitForBlockedBehind`
- * fails loudly if they are not: if a refactor ever left the attempts sharing one
- * connection, the second statement would queue, the blocked count would stay at
- * 1, and this test would fail with an explanation instead of passing vacuously.
- * Every legal interleaving after that point reaches the same answer, because the
- * decision lives in the `UPDATE ... WHERE "redemptionCount" < "maxRedemptions"`
- * predicate, which Postgres evaluates against the row it is about to write while
- * holding that row's lock.
+ * Two separate things make this a race proof rather than a scheduling accident,
+ * and they are worth keeping apart:
  *
- * THE KILL MUTATION FOR THIS FILE
- * Delete `AND "redemptionCount" < "maxRedemptions"` from the conditional UPDATE in
- * `lib/invites.ts` and this file goes red: both writers succeed, `redemptionCount`
- * lands on 2 against a maximum of 1, and `admin_audit_log` holds two
- * `invite.redeem` rows for one use. Conversely, a SEQUENTIAL version of these
- * calls still passes against the mutated (broken) implementation, because the
- * second call reads the already-incremented counter and refuses from the read
- * phase — which is precisely why the two-session barrier, and not merely
- * "call it twice", is the load-bearing part of this test.
+ *   THE CONSTRUCTION. A third connection (the gate) takes the invite row's lock
+ *   with `SELECT id FROM beta_invite WHERE id = $1 FOR UPDATE` inside an open
+ *   transaction BEFORE either attempt is dispatched. A contender that gets past
+ *   phase 1 can then not commit, not be refused, and not reach
+ *   `stampInviteRedemption` until the gate opens: its conditional UPDATE has
+ *   nowhere to go but the row-lock queue. "Two attempts are in flight at the same
+ *   moment" is therefore a fact about how the test is built, not an observation
+ *   about timing.
+ *
+ *   THE BARRIER. The gate is committed only once the barrier has SEEN that queue,
+ *   and it reads the queue out of `pg_locks` — the lock manager's own view, which
+ *   is the authority on who is waiting. Measured on this repository's PostgreSQL
+ *   16.8 with one `FOR UPDATE` holder and several waiters on the same row: the
+ *   FIRST waiter holds an ungranted `transactionid` lock whose `transactionid` is
+ *   the gate's own xid (it holds the tuple lock and waits for the holder to
+ *   finish), and every waiter BEHIND it holds an ungranted `tuple` lock on
+ *   `beta_invite`. Neither shape can be produced by the phase-1 `SELECT`: a plain
+ *   read takes no row-level lock at all, so `sessionsQueuedOnInviteRow` matches
+ *   only sessions that have reached the conditional UPDATE. The queue cannot
+ *   drain while the gate is open, so the barrier waits for a state that persists
+ *   until the barrier itself ends it, and a deadline that fires says what it saw.
+ *   Every legal interleaving after that point reaches the same answer, because the
+ *   decision lives in the `UPDATE ... WHERE "redemptionCount" < "maxRedemptions"`
+ *   predicate, which Postgres evaluates against the row it is about to write while
+ *   holding that row's lock.
+ *
+ * WHAT THE PREVIOUS BARRIER GOT WRONG, AND WHY THIS ONE CANNOT REPEAT IT.
+ * The previous version held the same gate but read the queue out of
+ * `pg_stat_activity`: it waited for the first reading in which the number of
+ * sessions "blocked behind" the gate reached the number of attempts, and then
+ * asserted that the `query` column OF THAT SAME READING was the invite UPDATE.
+ * One full-suite run failed inside it, reporting a session as blocked while its
+ * statement was the phase-1 `SELECT ... FROM beta_invite WHERE code = $1 LIMIT
+ * $2` — a pairing no row lock can produce, because a plain SELECT never waits on
+ * one. The lesson is not "wait longer"; it is that the two fields that barrier
+ * read are not one fact. `pg_blocking_pids` is evaluated from live lock-manager
+ * state session by session, while the statement text is the status a backend last
+ * reported for itself, so a single reading can disagree with itself about what a
+ * session is doing — and the old barrier turned one reading into a verdict and
+ * gave up in a window the construction guarantees to close within a poll or two.
+ * This barrier takes its evidence from the LOCK MANAGER only, which cannot lag
+ * behind the wait it is reporting, and it waits for that evidence instead of
+ * judging the first reading. Statement text still appears, but only inside the
+ * FAILURE MESSAGES — the queued-session listing below and `describeWaitState` —
+ * and it decides nothing there: the barrier counts lock-manager rows, and never
+ * turns what a backend said it was doing into a pass or a failure.
+ *
+ * THE KILL MUTATIONS FOR THIS FILE
+ * 1. Delete `AND "redemptionCount" < "maxRedemptions"` from the conditional
+ *    UPDATE in `lib/invites.ts` and this file goes red: both writers succeed,
+ *    `redemptionCount` lands on 2 against a maximum of 1, and `admin_audit_log`
+ *    holds two `invite.redeem` rows for one use. Conversely, a SEQUENTIAL version
+ *    of these calls still passes against the mutated (broken) implementation,
+ *    because the second call reads the already-incremented counter and refuses
+ *    from the read phase — which is precisely why the two-session barrier, and not
+ *    merely "call it twice", is the load-bearing part of this test.
+ * 2. Serialise the attempts: dispatch each `redeemInvite` and await it before
+ *    dispatching the next. The first cannot finish while the gate holds the row
+ *    lock, so at most one session ever queues, the barrier never reaches its
+ *    target, and every racing test fails on a deadline that names how many
+ *    sessions it saw. A barrier that let that pass would be decoration, so this
+ *    mutation is run as part of the unit's evidence, not merely asserted here.
  *
  * NO MOCKS. The scratch schema is the production migration, `redeemInvite` is the
  * shipped module, and every assertion reads back through `db`/`testPool`. A
@@ -93,11 +133,17 @@ const INVITE_REDEEM_ACTION = 'invite.redeem'
 /** One redemption attempt as the test makes it — the arguments `redeemInvite` takes. */
 type RedemptionAttempt = { code: string; userId: string; email: string }
 
-/** One row of `pg_stat_activity`, for a backend waiting on a lock. */
-type BlockedBackend = {
+/** One session holding a lock that only a queued row-lock attempt can hold. */
+type QueuedSession = {
   pid: number
   state: string | null
   waitEventType: string | null
+  waitEvent: string | null
+  /**
+   * The statement the backend last reported. Carried for the FAILURE MESSAGE
+   * only, never for the decision — see the module header on why this field is not
+   * evidence that a session is queued.
+   */
   query: string
 }
 
@@ -107,7 +153,7 @@ const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 /** How long to wait for the redemption attempts to reach the row lock. */
 const RACE_WAIT_TIMEOUT_MS = 15_000
 
-/** How often to ask Postgres which backends are waiting. */
+/** How often to ask the lock manager which sessions are queued on the row lock. */
 const RACE_POLL_INTERVAL_MS = 10
 
 /** Generous per-test timeout: the barrier polls, the pool opens connections. */
@@ -188,9 +234,9 @@ function describeError(error: unknown): string {
 }
 
 /**
- * The backend pid behind a client, for the `pg_blocking_pids` filter below.
- * `pg_backend_pid()` is a database fact; reading it beats assuming the pool gave
- * us a distinct session.
+ * The backend pid behind a client: the gate's pid is what the barrier excludes
+ * when it asks the lock manager who is queued. `pg_backend_pid()` is a database
+ * fact; reading it beats assuming the pool gave us a distinct session.
  */
 async function backendPid(client: PoolClient): Promise<number> {
   const { rows } = await client.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
@@ -205,67 +251,178 @@ async function backendPid(client: PoolClient): Promise<number> {
 }
 
 /**
- * Every backend in the WAITING SUBTREE behind `blockerPid`, with the statement
- * each one is waiting on.
+ * The gate transaction's own id, as text — the thing a queued session waits ON.
  *
- * THE SUBTREE, NOT JUST THE DIRECT WAITERS, and why that matters here. Postgres
- * runs a row-lock wait queue: the first statement to find the row locked becomes
- * the queue's head and holds the tuple lock, and the statements that arrive after
- * it wait on THAT waiter — so `pg_blocking_pids()` reports the gate pid for the
- * first attempt only, and the next attempt as the blocker for the ones after it.
- * A test that counted only direct waiters would see 1, conclude the race never
- * happened, and be wrong about the very thing it exists to measure. The recursive
- * walk below follows that queue back to the gate, which is the honest answer to
- * "who is queued behind this row lock".
+ * `pg_locks.transactionid` on a waiting session names the transaction it is
+ * waiting for, so this string is how the HEAD of the row-lock queue is picked out
+ * of `pg_locks`. Compared as text because `xid` and `xid8` are different widths
+ * and a cast between them could silently compare the wrong numbers; `txid_current()`
+ * hands back the 32-bit id as a bigint, formatted exactly as
+ * `pg_locks.transactionid::text` formats the column it must match (measured on
+ * the PostgreSQL 16.8 in this repository). The row lock the gate already took has
+ * assigned the transaction an id, which is why reading it here cannot be what
+ * gives the gate its id.
  */
-async function blockedBehind(blockerPid: number): Promise<BlockedBackend[]> {
-  const { rows } = await testPool().query<BlockedBackend>(
-    `WITH RECURSIVE waiting(pid) AS (
-       SELECT pid FROM pg_stat_activity WHERE $1 = ANY (pg_blocking_pids(pid))
-       UNION
-       SELECT a.pid
-         FROM pg_stat_activity a
-         JOIN waiting w ON w.pid = ANY (pg_blocking_pids(a.pid))
-     )
-     SELECT a.pid,
+async function gateTransactionId(client: PoolClient): Promise<string> {
+  const { rows } = await client.query<{ xid: string | null }>('SELECT txid_current()::text AS xid')
+  const xid = rows[0]?.xid
+  if (typeof xid !== 'string' || xid.length === 0) {
+    throw new Error(
+      `txid_current() did not return a transaction id (got ${String(xid)}); the head of the ` +
+        'row-lock queue cannot be identified, so the barrier cannot prove the race staged.',
+    )
+  }
+  return xid
+}
+
+/**
+ * The sessions queued on the invite row lock the gate holds.
+ *
+ * TWO LOCK SHAPES, ONE QUEUE. `pg_locks` reports the head of a row-lock queue and
+ * the sessions behind it differently (measured here with one `FOR UPDATE` holder
+ * and several waiters on the same row): the head holds an ungranted
+ * `transactionid` lock whose target is the gate's xid, and each waiter behind the
+ * head holds an ungranted `tuple` lock on `beta_invite`. Matching BOTH is what
+ * makes the predicate complete, and matching them in `pg_locks` is what makes it
+ * immune to the reported-statement lag that broke the previous barrier: the lock
+ * manager is the authority on who is waiting for what.
+ *
+ * WHAT THIS CANNOT MATCH. A plain `SELECT` takes no row-level lock, so the
+ * phase-1 `readInviteByCode` in `lib/invites.ts` cannot put a session in this
+ * set. The statement that can is the conditional
+ * `UPDATE ... WHERE "redemptionCount" < "maxRedemptions"` — or the
+ * `SELECT ... FOR UPDATE` inside `stampInviteRedemption`, which a contender
+ * cannot reach while the gate is open, because reaching it requires the claim it
+ * just queued behind.
+ *
+ * `DISTINCT ON (l.pid)` because the barrier counts SESSIONS, and one session can
+ * hold more than one matching row (the head holds a granted tuple lock and waits
+ * on the transaction id).
+ */
+async function sessionsQueuedOnInviteRow(
+  gatePid: number,
+  gateXid: string,
+): Promise<QueuedSession[]> {
+  const { rows } = await testPool().query<QueuedSession>(
+    `SELECT DISTINCT ON (l.pid)
+            l.pid,
             a.state,
             a.wait_event_type AS "waitEventType",
+            a.wait_event AS "waitEvent",
             a.query
-       FROM pg_stat_activity a
-       JOIN waiting w ON w.pid = a.pid
-      ORDER BY a.pid`,
-    [blockerPid],
+       FROM pg_locks l
+       JOIN pg_stat_activity a ON a.pid = l.pid
+      WHERE l.granted = false
+        AND l.pid <> $1
+        AND ( (l.locktype = 'transactionid' AND l.transactionid::text = $2)
+           OR (l.locktype = 'tuple' AND l.relation = 'beta_invite'::regclass) )
+      ORDER BY l.pid`,
+    [gatePid, gateXid],
   )
   return rows
 }
 
 /**
- * Wait until `expected` backends are blocked behind the gate's row lock, then
- * return them — this is what turns "two calls at nearly the same time" into "two
- * sessions provably inside the row's update path at once".
- *
- * A timeout is a FAILURE with an explanation, never a silent pass. The only way
- * it happens is if the attempts did not reach the server as separate sessions
- * (e.g. one pooled connection serialising them), which is exactly the situation
- * that would make the rest of the assertions meaningless.
+ * What the barrier could see at the moment it gave up, as text for the failure
+ * message: every session that is active or waiting, what is blocking it, and the
+ * statement it last reported. This is the ONLY place a statement is read, and it
+ * only ever writes prose into an error — it cannot turn a bad reading into a pass
+ * or a failure of its own.
  */
-async function waitForBlockedBehind(
-  blockerPid: number,
+async function describeWaitState(gatePid: number): Promise<string> {
+  const { rows } = await testPool().query<{
+    pid: number
+    state: string | null
+    waitEventType: string | null
+    waitEvent: string | null
+    blockers: number[]
+    query: string
+  }>(
+    `SELECT a.pid,
+            a.state,
+            a.wait_event_type AS "waitEventType",
+            a.wait_event AS "waitEvent",
+            pg_blocking_pids(a.pid) AS blockers,
+            left(a.query, 160) AS query
+       FROM pg_stat_activity a
+      WHERE a.pid <> $1
+        AND (a.state <> 'idle' OR pg_blocking_pids(a.pid) <> '{}')
+      ORDER BY a.pid`,
+    [gatePid],
+  )
+  if (rows.length === 0) return '  (no other session was active or waiting)'
+  return rows
+    .map(
+      (row) =>
+        `  pid ${row.pid}: state=${String(row.state)} ` +
+        `wait=${String(row.waitEventType)}/${String(row.waitEvent)} ` +
+        `blockedBy=[${row.blockers.join(',')}] ` +
+        `statement=${JSON.stringify(row.query)}`,
+    )
+    .join('\n')
+}
+
+/**
+ * The queued sessions as prose for a failure message: pid, what each is waiting
+ * on, and the statement it last reported. This is DIAGNOSTIC ONLY — it feeds the
+ * two failure messages below and is read on no other path — which is why the
+ * barrier can afford to carry fields it does not decide on. A deadline that says
+ * "only 1 of 4 queued" without naming the one it saw leaves the next reader
+ * guessing which session stalled where; this does not.
+ */
+function describeQueuedSessions(queued: QueuedSession[]): string {
+  if (queued.length === 0) return '  (no session was queued on the invite row lock)'
+  return queued
+    .map(
+      (session) =>
+        `  pid ${session.pid}: state=${String(session.state)} ` +
+        `wait=${String(session.waitEventType)}/${String(session.waitEvent)} ` +
+        `statement=${JSON.stringify(session.query)}`,
+    )
+    .join('\n')
+}
+
+/**
+ * Wait until at least `expected` sessions are queued on the invite row lock the
+ * gate holds, and return them.
+ *
+ * A deadline is a FAILURE that reports what it saw — never a silent pass, and
+ * never a verdict drawn from a single reading taken mid-transition. It can only
+ * fire when the attempts did not reach the row as separate sessions: a serialised
+ * pair, or two statements handed to one connection, never queues the second, and
+ * a queue that never forms would make every assertion below meaningless.
+ */
+async function waitForQueuedOnInviteRow(
+  gatePid: number,
+  gateXid: string,
   expected: number,
-): Promise<BlockedBackend[]> {
+): Promise<QueuedSession[]> {
   const deadline = Date.now() + RACE_WAIT_TIMEOUT_MS
-  let blocked: BlockedBackend[] = []
   for (;;) {
-    blocked = await blockedBehind(blockerPid)
-    if (blocked.length >= expected) return blocked
+    const queued = await sessionsQueuedOnInviteRow(gatePid, gateXid)
+    if (queued.length >= expected) {
+      if (queued.length > expected) {
+        throw new Error(
+          `${queued.length} sessions are queued on the invite row lock, but this race staged ` +
+            `${expected} attempt(s). The guarantee under test is about THIS file's attempts, ` +
+            'so a queue containing a session this test did not dispatch means the barrier ' +
+            'cannot say which redemptions it queued. Refusing to commit the gate and call ' +
+            `that a race. The queue it saw:\n${describeQueuedSessions(queued)}`,
+        )
+      }
+      return queued
+    }
     if (Date.now() >= deadline) {
       throw new Error(
-        `only ${blocked.length} of ${expected} redemption attempt(s) were waiting on the ` +
-          `invite row lock after ${RACE_WAIT_TIMEOUT_MS} ms. The race under test is a ` +
-          'property of two independent Postgres sessions: two statements on one session ' +
-          'are executed one after the other and never overlap, which would let a broken ' +
-          'read-then-write implementation pass. Refusing to assert on an interleaving ' +
-          'that never happened.',
+        `after ${RACE_WAIT_TIMEOUT_MS} ms only ${queued.length} of ${expected} redemption ` +
+          'attempt(s) had queued on the invite row lock the gate holds. The race under test is ' +
+          'a property of independent Postgres sessions: a second statement on one session, or a ' +
+          'serialised pair (the first attempt awaited before the second is dispatched), never ' +
+          'queues here — which is the situation in which a broken read-then-write implementation ' +
+          'would pass vacuously. Refusing to release the gate into a race that never staged. ' +
+          `The ${queued.length} session(s) it did see queued on the row lock:\n` +
+          `${describeQueuedSessions(queued)}\nEvery session active or waiting:\n` +
+          `${await describeWaitState(gatePid)}`,
       )
     }
     await new Promise((resolve) => setTimeout(resolve, RACE_POLL_INTERVAL_MS))
@@ -275,12 +432,15 @@ async function waitForBlockedBehind(
 /**
  * Run every attempt concurrently against ONE row, with the overlap forced.
  *
- * The gate (a separate client from `testPool()`) takes the row lock first. Every
- * `redeemInvite` call is then dispatched before any of them is awaited — the
- * synchronous `map` issues each call's first query straight away — and the test
- * waits until Postgres reports all of them blocked behind that lock. Committing
- * the gate releases them together, so they contend for the row in the database
- * rather than in this process.
+ * The gate (a separate client from `testPool()`) takes the row lock FIRST, before
+ * any attempt is dispatched. Every `redeemInvite` call is then issued before any
+ * of them is awaited — the synchronous `map` starts each call's first query
+ * straight away — and the barrier waits until the lock manager reports that all
+ * of them are queued on that row lock. Committing the gate releases them
+ * together, so they contend for the row in the database rather than in this
+ * process, and the queue's existence is what makes it a race instead of a
+ * sequence. See the module header for why the queue is read from `pg_locks` and
+ * not from the statements the sessions happen to be reporting.
  *
  * Results come back in attempt order (`Promise.all` preserves it), which is how a
  * test maps a winning outcome to the user who won it.
@@ -316,20 +476,15 @@ async function raceInviteRedemptions(
       )
     }
     const gatePid = await backendPid(gate)
+    const gateXid = await gateTransactionId(gate)
 
-    // Dispatch first, await later: every call is in flight before the gate opens.
+    // Dispatch first, await later: every call is in flight before the gate opens,
+    // and the gate already holds the row lock, so a call that gets past phase 1
+    // has nowhere to go but this row's queue and stays there until the commit
+    // below. The barrier waits for that queue rather than for a window in which
+    // two calls happen to be close together.
     inFlight = attempts.map((attempt) => redeemInvite(attempt))
-
-    const blocked = await waitForBlockedBehind(gatePid, attempts.length)
-    for (const backend of blocked) {
-      if (!/update\s+(?:"?[a-z_]+"?\.)?"?beta_invite"?/i.test(backend.query)) {
-        throw new Error(
-          `backend ${backend.pid} is blocked behind the gate, but not on the invite update — ` +
-            `its statement is ${JSON.stringify(backend.query)}. The race staged here only ` +
-            'means something if the blocked statement is the redemption.',
-        )
-      }
-    }
+    await waitForQueuedOnInviteRow(gatePid, gateXid, attempts.length)
 
     await gate.query('COMMIT')
     gateCommitted = true

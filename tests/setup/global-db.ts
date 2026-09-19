@@ -27,6 +27,18 @@
  *   8. return a teardown that drops the schema and ends the pool. It is safe to
  *      call twice.
  *
+ * WHY STEPS 2-7 ARE ONE EXPORTED FUNCTION AND NOT A `globalSetup` BODY.
+ * They used to be inlined here, and that made the sweep UNASSERTABLE: deleting
+ * the `sweepStaleScratchSchemas(...)` call left the whole suite green (170/170)
+ * while an orphaned scratch schema survived forever, because
+ * `tests/setup/harness-hygiene.test.ts` calls the sweep FUNCTION directly and so
+ * proves the function and never the lifecycle. Steps 2-7 now live in
+ * `prepareScratchSchema`, which `globalSetup` calls and whose returned schema it
+ * checks, and `tests/setup/harness-lifecycle.test.ts` calls the SAME function —
+ * so the invocation is part of a test and the protection is no longer silently
+ * removable. `globalSetup` keeps owning the one thing the sequence must not:
+ * the pool and the name teardown will drop.
+ *
  * WHY THE NAME CARRIES ITS CREATION TIME.
  * The teardown in step 8 runs only when this setup resolves AND the process exits
  * cleanly. A test process that is killed, times out, or is OOM-killed therefore
@@ -197,7 +209,7 @@ type SchemaRow = { schema_name: string }
  * Drop every scratch schema this harness recognises as stale, and return the
  * names dropped. Names it does not recognise are logged and LEFT ALONE.
  *
- * Called by `globalSetup` BEFORE this run creates its own schema. The listing is
+ * Called by `prepareScratchSchema` BEFORE this run creates its own schema. The listing is
  * filtered in SQL with `left(schema_name, length($1)) = $1` rather than
  * `LIKE 'peak_test_%'`, because `_` is a LIKE wildcard and this prefix contains
  * two of them — `LIKE` would also match `peakZtest...`, i.e. a schema belonging
@@ -701,6 +713,115 @@ function assertComplete(
   }
 }
 
+/**
+ * The database URL behind `pool`, with any `search_path` option removed.
+ *
+ * `prepareScratchSchema` has to hand the REAL migration runner a `DATABASE_URL`
+ * aimed at a schema that does not exist yet, so it needs the database behind the
+ * pool it was given — not the schema that pool is currently pointed at. It reads
+ * `pool.options.connectionString`, which `pg-pool` keeps verbatim
+ * (`node_modules/pg-pool/index.js:69`, `this.options = Object.assign({}, options)`,
+ * @types/pg `PoolOptions extends PoolConfig` declares `connectionString`), and
+ * drops the `options` parameter `withSearchPath` added; every other parameter a
+ * real URL carries (`sslmode`, …) is preserved, because it is the same URL object
+ * round-tripped rather than a string rebuilt from parts.
+ *
+ * A pool built from host/port fields instead of a connection string has no URL to
+ * read: that throws here rather than migrating the developer's database.
+ */
+function adminUrlOf(pool: Pool): string {
+  const configured = pool.options.connectionString
+  if (typeof configured !== 'string' || configured === '') {
+    throw new Error(
+      `${LOG} the pool handed to prepareScratchSchema was not created from a connection ` +
+        'string, so there is no database URL to point the migration runner at. Pass a ' +
+        'pool built from a connection string (see tests/helpers/db.ts:testPool).',
+    )
+  }
+  const url = new URL(configured)
+  url.searchParams.delete('options')
+  return url.toString()
+}
+
+/**
+ * THE LIFECYCLE, AS ONE ASSERTABLE FUNCTION: sweep the orphans a killed earlier
+ * process stranded → drop and create `schemaNameFor(nowMs, pid)` → migrate it
+ * with the REAL runner → verify the 38 application tables against
+ * `lib/db/schema/` → close its referential graph → export the handles into
+ * `process.env`. Returns the schema it prepared.
+ *
+ * This is the exact path `globalSetup` runs, and it is deliberately exported: a
+ * test that calls it exercises the lifecycle rather than one function inside it,
+ * so deleting the sweep breaks a test instead of passing unnoticed (see the
+ * module header). The caller owns the pool and the teardown — this function
+ * never closes a pool, and never touches the module-level `scratchPool` /
+ * `liveSchema` that `globalSetup`'s teardown drops.
+ *
+ * It DOES assign `process.env.PEAK_TEST_SCHEMA`, `PEAK_TEST_DATABASE_URL` and
+ * `DATABASE_URL` — that handover is step 7 of the lifecycle and the forked
+ * workers cannot run without it. A caller that is not `globalSetup` (i.e. a test)
+ * must save those three values first and restore them afterwards, or the next
+ * test file in this worker inherits a schema that its `afterAll` dropped.
+ */
+export async function prepareScratchSchema(
+  pool: Pool,
+  nowMs: number,
+  pid: number,
+): Promise<string> {
+  // The name is interpolated into DDL (identifiers cannot be parameterised), so
+  // it is validated rather than trusted — `schemaNameFor` asserts it too, and
+  // this second guard is the one the sweep's DDL relies on as well.
+  const schema = schemaNameFor(nowMs, pid)
+  assertSafeSchemaName(schema)
+  const scratchUrl = withSearchPath(adminUrlOf(pool), schema)
+
+  // 2. Sweep BEFORE creating this run's own schema. A killed or timed-out
+  //    earlier process never reached its teardown, so its schema outlives it
+  //    and — unlike the old pid-only name — would never be reused. Only names
+  //    carrying a readable timestamp older than TEST_SCHEMA_MAX_AGE_MS are
+  //    dropped; anything else under the prefix is reported and left alone.
+  console.log(
+    `${LOG} sweep: looking for orphaned scratch schemas older than ` +
+      `${Math.round(TEST_SCHEMA_MAX_AGE_MS / 1000)}s`,
+  )
+  const swept = await sweepStaleScratchSchemas(pool, nowMs)
+  console.log(
+    `${LOG} sweep: dropped ${swept.length} stale schema(s)` +
+      `${swept.length ? `: ${swept.join(', ')}` : ''}`,
+  )
+
+  // 3. A crashed earlier run must not be able to poison this one.
+  await pool.query(`DROP SCHEMA IF EXISTS ${quoteIdentifier(schema)} CASCADE`)
+  await pool.query(`CREATE SCHEMA ${quoteIdentifier(schema)}`)
+  console.log(`${LOG} 2/7 reset: dropped (if it existed) and created schema "${schema}"`)
+
+  runMigrations(scratchUrl)
+
+  // 4. Verify the scratch schema itself, not the developer's `public`.
+  const expected = await expectedTables()
+  const { tables, columns } = await inspectSchema(pool, schema)
+  const application = new Set([...tables].filter((table) => !MIGRATION_JOURNAL_TABLES.has(table)))
+  const journals = [...tables].filter((table) => MIGRATION_JOURNAL_TABLES.has(table))
+  assertComplete(schema, expected, application, columns)
+  console.log(
+    `${LOG} 4/7 verified: ${application.size}/${EXPECTED_TABLE_COUNT} application table(s) ` +
+      `present in "${schema}"${journals.length ? ` (journal: ${journals.join(', ')})` : ''}`,
+  )
+
+  // 5. Close the referential graph. The migration's keys were generated
+  //    against `public`; until they are re-pointed, every write that crosses a
+  //    key is validated against the developer's tables (see `repointForeignKeys`).
+  await repointForeignKeys(pool, schema)
+
+  // 6. Hand the handles to the workers, which fork after this returns.
+  process.env.PEAK_TEST_SCHEMA = schema
+  process.env.PEAK_TEST_DATABASE_URL = scratchUrl
+  process.env.DATABASE_URL = scratchUrl
+  console.log(`${LOG} 6/7 exported PEAK_TEST_SCHEMA, PEAK_TEST_DATABASE_URL, DATABASE_URL`)
+
+  return schema
+}
+
 /** The pool the teardown owns, plus the schema it points at. */
 let scratchPool: Pool | null = null
 let liveSchema: string | null = null
@@ -711,10 +832,6 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   //    tell how old this one is (see `sweepStaleScratchSchemas`).
   const nowMs = Date.now()
   const schema = schemaNameFor(nowMs, process.pid)
-  // The name is interpolated into DDL (identifiers cannot be parameterised), so
-  // it is validated rather than trusted — `schemaNameFor` asserts it too, and
-  // this second guard is the one the sweep's DDL relies on as well.
-  assertSafeSchemaName(schema)
 
   const adminUrl = process.env.DATABASE_URL ?? DEV_DATABASE_URL
   const scratchUrl = withSearchPath(adminUrl, schema)
@@ -725,49 +842,19 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   liveSchema = schema
 
   try {
-    // 2. Sweep BEFORE creating this run's own schema. A killed or timed-out
-    //    earlier process never reached its teardown, so its schema outlives it
-    //    and — unlike the old pid-only name — would never be reused. Only names
-    //    carrying a readable timestamp older than TEST_SCHEMA_MAX_AGE_MS are
-    //    dropped; anything else under the prefix is reported and left alone.
-    console.log(
-      `${LOG} sweep: looking for orphaned scratch schemas older than ` +
-        `${Math.round(TEST_SCHEMA_MAX_AGE_MS / 1000)}s`,
-    )
-    const swept = await sweepStaleScratchSchemas(pool, nowMs)
-    console.log(
-      `${LOG} sweep: dropped ${swept.length} stale schema(s)` +
-        `${swept.length ? `: ${swept.join(', ')}` : ''}`,
-    )
-
-    // 3. A crashed earlier run must not be able to poison this one.
-    await pool.query(`DROP SCHEMA IF EXISTS ${quoteIdentifier(schema)} CASCADE`)
-    await pool.query(`CREATE SCHEMA ${quoteIdentifier(schema)}`)
-    console.log(`${LOG} 2/7 reset: dropped (if it existed) and created schema "${schema}"`)
-
-    runMigrations(scratchUrl)
-
-    // 4. Verify the scratch schema itself, not the developer's `public`.
-    const expected = await expectedTables()
-    const { tables, columns } = await inspectSchema(pool, schema)
-    const application = new Set([...tables].filter((table) => !MIGRATION_JOURNAL_TABLES.has(table)))
-    const journals = [...tables].filter((table) => MIGRATION_JOURNAL_TABLES.has(table))
-    assertComplete(schema, expected, application, columns)
-    console.log(
-      `${LOG} 4/7 verified: ${application.size}/${EXPECTED_TABLE_COUNT} application table(s) ` +
-        `present in "${schema}"${journals.length ? ` (journal: ${journals.join(', ')})` : ''}`,
-    )
-
-    // 5. Close the referential graph. The migration's keys were generated
-    //    against `public`; until they are re-pointed, every write that crosses a
-    //    key is validated against the developer's tables (see `repointForeignKeys`).
-    await repointForeignKeys(pool, schema)
-
-    // 6. Hand the handles to the workers, which fork after this returns.
-    process.env.PEAK_TEST_SCHEMA = schema
-    process.env.PEAK_TEST_DATABASE_URL = scratchUrl
-    process.env.DATABASE_URL = scratchUrl
-    console.log(`${LOG} 6/7 exported PEAK_TEST_SCHEMA, PEAK_TEST_DATABASE_URL, DATABASE_URL`)
+    // 2-6. The lifecycle itself, in the exported function above — the very path
+    //      tests/setup/harness-lifecycle.test.ts drives, so the sweep's presence
+    //      in it is asserted rather than assumed.
+    const prepared = await prepareScratchSchema(pool, nowMs, process.pid)
+    // The pool was opened with `search_path = schema`; the sequence must have
+    // prepared that same name, or the exported DATABASE_URL and this pool would
+    // disagree about where the fixture is. Never a silent mismatch.
+    if (prepared !== schema) {
+      throw new Error(
+        `${LOG} prepareScratchSchema prepared "${prepared}" but this run's pool is pointed ` +
+          `at "${schema}"; refusing to export a DATABASE_URL the fixture is not in.`,
+      )
+    }
   } catch (error) {
     // Leave no partial schema behind, and never hide why setup failed.
     console.error(`${LOG} setup failed; dropping "${schema}" so no partial schema survives`)
