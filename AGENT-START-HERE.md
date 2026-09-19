@@ -104,10 +104,10 @@ Every one of these, with **actual output pasted**. Rule 6 does not accept an
 assertion:
 
 ```bash
-pnpm lint         # once PEAK-207 lands
+pnpm lint
 pnpm typecheck
 pnpm build
-pnpm test         # once PEAK-206 lands
+pnpm test
 pnpm db:check     # all tables verified
 pnpm check:links  # no unowned dead links
 ```
@@ -175,9 +175,10 @@ Learn these rather than rediscovering them:
 canonical PROHIBITED block pasted **verbatim** into every agent prompt, and
 forbids paraphrasing or inventing a replacement.
 
-The doctrine calls it an **11-rule** block. The canonical file at
-`tickets/doctrine/PROHIBITED.txt` contains **10** numbered rules plus an
-unnumbered `STAY SHORT:` closer. That discrepancy is open, recorded as **D1**,
-and has not been resolved by invention.
+The doctrine calls it an **11-rule** block. That discrepancy was open as
+**D1** from AREA-111 until **2026-09-19**, when the design owner ruled: the
+canonical governed block is the **11-rule** block, and rule 11 is
+`NO GREP-ABSENCE = INTENT-ABSENCE`. `tickets/doctrine/PROHIBITED.txt` now
+carries all eleven rules and is the paste source.
 
-Resolve D1 before running a governed wave, then paste the file verbatim.
+Paste the file **verbatim** into every agent prompt. Never paraphrase it.

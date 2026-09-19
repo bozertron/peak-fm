@@ -13,6 +13,14 @@ Read this document in full before your first tool call. It is the contract.
 each agent session. This document is the orchestrator's plan; that one is the
 per-agent briefing.
 
+> **STATUS 2026-09-19 — Wave 0 has landed.** PEAK-206 (test harness) and
+> PEAK-207 (lint and format) are in the tree and verified, and the CI workflow
+> (PEAK-208) is written but unexecuted. **D1 is closed** — the canonical
+> PROHIBITED block is the 11-rule block, and `tickets/doctrine/PROHIBITED.txt`
+> now carries it. The plan below is retained unchanged as the record of what was
+> intended; where it hedges on D1 or on the absence of a test runner and linter,
+> that hedging is history, not current instruction.
+
 ---
 
 ## 0. TL;DR for the orchestrator

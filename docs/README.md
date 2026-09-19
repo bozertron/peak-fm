@@ -52,8 +52,10 @@ and open `/admin` to switch surfaces on.
 
 ## Ground rules
 
-1. **No stubs.** `tickets/doctrine/PROHIBITED.txt` is 10 numbered rules plus a
-   closer, and it is binding.
+1. **No stubs.** `tickets/doctrine/PROHIBITED.txt` is 11 numbered rules and it
+   is binding. Rule 11 is `NO GREP-ABSENCE = INTENT-ABSENCE`: an unreferenced
+   symbol, reserved asset or computed-but-unrendered field is a specification,
+   not dead weight.
 2. **An honest empty state beats fake data.** No sample listings are seeded, on
    purpose.
 3. **`pnpm db:check` is a predeploy gate.** A production sign-in once 500'd

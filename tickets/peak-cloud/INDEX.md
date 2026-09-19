@@ -11,9 +11,9 @@ headers — if this disagrees with a ticket, the ticket is right.
 | [203](PEAK-203-admin-dashboard.md) | — | Admin dashboard for beta operations | PEAK-200, PEAK-204 | **DONE — verified** |
 | [204](PEAK-204-auth-fixes.md) | — | Auth: roles that work, origins that work | none | **DONE — verified** |
 | [205](PEAK-205-route-inventory.md) | — | Route inventory and the dead-link guard | none | **PARTLY DONE** — guard shipped, 18 routes still open |
-| [206](PEAK-206-test-harness.md) | **0** | Test harness | none | OPEN |
-| [207](PEAK-207-lint-and-format.md) | **0** | Lint and format | none | OPEN |
-| [208](PEAK-208-continuous-integration.md) | **0** | Continuous integration | PEAK-206, PEAK-207 | OPEN |
+| [206](PEAK-206-test-harness.md) | **0** | Test harness | none | **DONE — verified** (W-PEAK-00, 2026-09-19) |
+| [207](PEAK-207-lint-and-format.md) | **0** | Lint and format | none | **DONE — verified** (W-PEAK-00, 2026-09-19) |
+| [208](PEAK-208-continuous-integration.md) | **0** | Continuous integration | PEAK-206, PEAK-207 | **PARTLY DONE** — workflow written and YAML-validated, never executed; smoke step blocked on the `<Analytics/>` 404 question |
 | [209](PEAK-209-media-storage.md) | **1** | Media storage | none | OPEN — interface unblocked, **backend blocked by D3** |
 | [210](PEAK-210-buy-browse-filters.md) | **2** | Buy: category browse and deep filtering | PEAK-213, PEAK-220 *(needs real supply)* | OPEN |
 | [211](PEAK-211-buyer-questions.md) | **3** | Buy: buyer question sets | PEAK-210, **PEAK-300** | OPEN |
@@ -43,7 +43,7 @@ headers — if this disagrees with a ticket, the ticket is right.
 
 ## Reading order for a cold start
 
-1. `../doctrine/PROHIBITED.txt` — binding, 10 rules plus a closer
+1. `../doctrine/PROHIBITED.txt` — binding, 11 rules
 2. `../../docs/PEAK-PRODUCT-SPEC.md` — what Peak is
 3. `STATUS.md` — the wave plan and why it is ordered that way
 4. `OPEN-DECISIONS.md` — what you must not decide yourself

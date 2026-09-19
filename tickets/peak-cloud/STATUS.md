@@ -1,7 +1,33 @@
 # peak-cloud — Status Board
 
-**Updated:** 2026-09-19, after a pressure test of the backlog against a
-parallel execution wave.
+**Updated:** 2026-09-19. Wave 0 has landed (below); the pressure-test notes and
+wave plan underneath are retained as the record of how the order was derived.
+
+## Wave 0 — landed and verified, 2026-09-19
+
+| Ticket | State | Evidence |
+|---|---|---|
+| **PEAK-206** Test harness | **DONE — verified** | `pnpm test` exit 0: 5 files / 19 tests. The harness creates a per-process scratch schema (`peak_test_<pid>`), migrates it with the **real** `scripts/db-migrate.mjs` (38/38 verified in-schema), and drops it: 0 scratch schemas survive and `public` stays at 53 tables. An orchestrator kill-mutation confirmed the FK re-point is load-bearing |
+| **PEAK-207** Lint and format | **DONE — verified** | `pnpm lint` exit 0 on the tree with **no mass reformat**. All nine diagnostics measured at wave start are resolved in real code — no suppressions, no disabled rules. `tests/gates/lint-gate.test.ts` is the durable negative control proving the gate can fail |
+| **PEAK-208** CI | **PARTLY DONE** | `.github/workflows/ci.yml` — 16 steps covering all seven gates, concurrency group, no `continue-on-error`. YAML-validated locally; **never executed** (needs a push), and its smoke step is blocked on the `<Analytics/>` question below |
+
+Bar: `build/WAVE0-BAR.md` · fix round report: `build/WAVE0-FIX-1-REPORT.md` ·
+wave record: `~/.pi/agent/projects-memory/peak-fm/waves/W-PEAK-00.md`
+
+**D1 is closed (2026-09-19).** The canonical PROHIBITED block is the 11-rule
+block; `tickets/doctrine/PROHIBITED.txt` now carries it, and rule 11 is
+`NO GREP-ABSENCE = INTENT-ABSENCE`.
+
+**Two open items Wave 0 leaves behind, named rather than implied:**
+
+1. **The smoke gate cannot be green until one of two calls is made.** In production
+   `app/layout.tsx` renders `<Analytics/>`; `_vercel/insights/*` 404s off Vercel, and
+   `scripts/smoke-test.mjs` exits 1 on *any* console error — while its own header documents
+   that 404 as expected. Either guard or remove `<Analytics/>` (registrar-owned, and
+   D3-shaped), or make the smoke rule tolerate that one documented URL. **Not a builder's call.**
+2. **CI has never run.** The workflow needs a push before its three negative controls
+   (a type error, a dropped table, a dead link) can be demonstrated as PEAK-208's
+   acceptance requires.
 
 ## Done and verified
 
@@ -39,7 +65,7 @@ links to).
 
 ## Open, in dependency order
 
-### Wave 0 — foundation. **Nothing else should merge before these land.**
+### Wave 0 — foundation. **Landed 2026-09-19** — see the top of this file. The reasoning below is kept as the record of why these three came first.
 
 | Ticket | Why it gates the wave |
 |---|---|
@@ -106,7 +132,7 @@ globals.css from 16 contenders down to approximately zero.
 
 | Decision | Blocks |
 |---|---|
-| **D1** PROHIBITED rule count | the first governed wave — *everything* |
+| ~~**D1** PROHIBITED rule count~~ | **CLOSED 2026-09-19** — the canonical block is the 11-rule block |
 | **D3** Hosting target | PEAK-250, and the storage backend in PEAK-209 |
 | **D4** Payment account model | PEAK-231 |
 | **D5** BC tax scope | the tax fields of PEAK-212 |

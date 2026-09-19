@@ -9,25 +9,32 @@ to keep the blockage from spreading.
 
 ---
 
-## D1 — The PROHIBITED rule count *(carried forward, still open)*
+## D1 — The PROHIBITED rule count *(CLOSED 2026-09-19 — supplied by the owner)*
 
-**Decides:** the user.
-**Blocks:** the first governed agent wave.
+**Decided by:** the user. **Resolution:** rule 11 is supplied; the canonical
+block is the **11-rule** block.
 
 `../doctrine/AREA-107-agent-orchestration-protocol.md` requires an **11-rule**
 PROHIBITED block pasted verbatim into every agent prompt, and forbids
 paraphrasing or inventing a replacement.
 
-`../doctrine/PROHIBITED.txt` contains **10** numbered rules plus an unnumbered
-`STAY SHORT:` closer.
+`../doctrine/PROHIBITED.txt` contained **10** numbered rules plus an unnumbered
+`STAY SHORT:` closer. No eleventh rule had been written and the closer had not
+been promoted to rule 11. This had been open since AREA-111 and was carried
+forward unresolved rather than quietly closed.
 
-No eleventh rule has been written. The closer has not been promoted to rule 11.
-This has been open since AREA-111 and is carried forward unresolved rather than
-quietly closed.
+**Ruling:** the canonical governed block is the 11-rule block. Rules 1–10 were
+already byte-identical between the doctrine's referenced block and the
+repository file, so the missing rule was supplied by the owner rather than
+invented: rule 11 is `NO GREP-ABSENCE = INTENT-ABSENCE` — an unreferenced
+symbol, reserved asset, design-bible entry, or computed-but-unrendered field is
+a specification, not dead weight.
 
-**To unblock:** supply the canonical block verbatim, or confirm that the 10-rule
-file plus its closer *is* the canonical block and the doctrine's "11" is an
-error.
+`../doctrine/PROHIBITED.txt` was updated to the 11-rule text on 2026-09-19 so the
+doctrine and the file agree again. D1 is closed as *supplied by the owner*, not
+resolved by invention.
+
+**Unblocks:** the first governed agent wave, which runs under all eleven rules.
 
 ---
 

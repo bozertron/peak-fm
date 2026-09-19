@@ -81,6 +81,21 @@ Roll out on the next composed wave, beginning with a probe-only dry run. Roll ba
 - Monitoring window: inspect reports, disk diff, tests, and critic evidence before the next wave.
 - Owner and escalation path: Orchestrator; unresolved ambiguity escalates directly to the user.
 
-## Open requirement
+## Open requirement — RESOLVED 2026-09-19
 
-The user references a canonical 11-rule PROHIBITED block, but the supplied note names it without including its verbatim contents. Before the first agent deployment under this protocol, retrieve the canonical block from the user's source or ask the user to provide it. Do not invent or paraphrase it.
+**Original requirement, kept for the record (no longer binding):**
+
+> The user references a canonical 11-rule PROHIBITED block, but the supplied note names it without including its verbatim contents. Before the first agent deployment under this protocol, retrieve the canonical block from the user's source or ask the user to provide it. Do not invent or paraphrase it.
+
+**Resolution (2026-09-19):** satisfied. The design owner supplied the missing
+text as a ruling rather than having it invented: the canonical governed block is
+the **11-rule** block, rules 1–10 already being byte-identical between this
+doctrine's referenced block and the repository file, and rule 11 being
+`NO GREP-ABSENCE = INTENT-ABSENCE`.
+
+The canonical 11-rule block is now in the repository at
+`tickets/doctrine/PROHIBITED.txt` (rules 1–11 plus the `STAY SHORT` closer), from
+which every agent prompt is pasted verbatim. The requirement above therefore no
+longer blocks the first agent deployment, and agents no longer need to ask for
+the block or to paraphrase one. D1 in
+`../peak-cloud/OPEN-DECISIONS.md` records the closure.

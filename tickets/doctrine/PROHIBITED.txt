@@ -12,4 +12,8 @@ ABSOLUTELY PROHIBITED — each rule is a hard stop (violation = task failure):
     codebase for its home (NO depth limit, NO count cap — orphan homes hide deep). Ask the user ONLY if you truly cannot find it.
 10. READ FULLY BEFORE INTEGRATING. Before integrating against a file: if it is ≤1500 lines, read the ENTIRE file first;
     if larger, use AST/symbol/regex tools and map EVERY pattern you'd plausibly touch. Never skim and assume.
+11. NO GREP-ABSENCE = INTENT-ABSENCE. An unreferenced symbol, reserved asset, design-bible entry, or computed-but-unrendered
+    field is a SPECIFICATION, not dead weight. NEVER delete/retire/project-away anything on grep evidence alone — absence of a
+    consumer is not absence of intent. Before removing, read the design bibles, reserved lists, and compute/mutation catalogs,
+    then confirm intent with the design owner.
 STAY SHORT: you own ONE goal. Research -> execute -> scoped tests -> brief report -> STOP.

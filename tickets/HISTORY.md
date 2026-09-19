@@ -81,7 +81,7 @@ is not carried into the cloud schema.
 
 | Surviving artifact | Where it lives now | Status |
 |---|---|---|
-| `PROHIBITED.txt` (10 rules + STAY SHORT) | `tickets/doctrine/` | **Live, verbatim, unchanged** |
+| `PROHIBITED.txt` (11 rules + STAY SHORT) | `tickets/doctrine/` | **Live, verbatim** |
 | Agent orchestration protocol (was AREA-107) | `tickets/doctrine/AREA-107-agent-orchestration-protocol.md` | **Live.** Governs the execution wave |
 | Ticket template | `tickets/templates/` | Live |
 | Self-hosted typography (was AREA-113) | Implemented in `app/globals.css` | **Shipped** |
@@ -114,18 +114,29 @@ AREA-112 S4 was reaching for by a different route.
 
 ---
 
-## 3. The open blocker, carried forward unresolved
+## 3. The open blocker — CLOSED 2026-09-19 (was carried forward unresolved)
 
-**The PROHIBITED rule count.** The doctrine (AREA-107) calls for an **11-rule**
-block pasted verbatim into every agent prompt. The canonical file at
-`tickets/doctrine/PROHIBITED.txt` contains **10** numbered rules plus an
+**The PROHIBITED rule count, as it stood.** The doctrine (AREA-107) called for an
+**11-rule** block pasted verbatim into every agent prompt. The canonical file at
+`tickets/doctrine/PROHIBITED.txt` contained **10** numbered rules plus an
 unnumbered `STAY SHORT` closer.
 
-Per STOP-SAFE this was not resolved by invention, and it still is not. No
-eleventh rule has been written. The closer has not been promoted to rule 11.
+Per STOP-SAFE this was not resolved by invention. No eleventh rule had been
+written and the closer had not been promoted to rule 11. It was recorded as
+**D1** in `tickets/peak-cloud/OPEN-DECISIONS.md`, open since AREA-111, and it
+gated the first governed agent wave exactly as it did before.
 
-This is recorded as **D1** in `tickets/peak-cloud/OPEN-DECISIONS.md` and it
-gates the first governed agent wave exactly as it did before.
+**What closed it, and when.** On 2026-09-19 the design owner supplied the ruling:
+the canonical governed block is the **11-rule** block. Rules 1–10 were already
+byte-identical between the doctrine's referenced block and the repository file,
+so the missing text was supplied rather than invented, and rule 11 is
+`NO GREP-ABSENCE = INTENT-ABSENCE`.
+
+`tickets/doctrine/PROHIBITED.txt` was updated to the 11-rule text the same day so
+the doctrine and the file agree again, and D1 closed as *supplied by the owner*,
+not resolved by invention. The first governed wave runs under all eleven rules.
+`tickets/doctrine/AREA-107-agent-orchestration-protocol.md` is no longer blocked
+by it.
 
 ---
 
