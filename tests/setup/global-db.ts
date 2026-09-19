@@ -8,23 +8,39 @@
  * working database is `public` (53 tables) and this file never writes to it.
  *
  * THE LIFECYCLE, ONCE PER TEST PROCESS
- *   1. name the schema after the pid, so two runs (or two agents) never fight
- *      over one schema;
- *   2. drop it if a crashed earlier run left it, then create it;
- *   3. run the REAL migration runner (`scripts/db-migrate.mjs`) against it — the
+ *   1. name the schema after the CURRENT EPOCH MILLISECONDS and the pid —
+ *      `peak_test_<epochMs>_<pid>` — so two runs (or two agents) never fight
+ *      over one schema AND a later run can decide how old the name is;
+ *   2. sweep orphaned scratch schemas a KILLED earlier process stranded (see
+ *      `sweepStaleScratchSchemas`), before this run creates its own;
+ *   3. drop its own name if a crashed earlier run left it, then create it;
+ *   4. run the REAL migration runner (`scripts/db-migrate.mjs`) against it — the
  *      fixture is whatever the production migration produces, never a second
  *      hand-written schema;
- *   4. verify the result against `lib/db/schema/` (the same source of truth the
+ *   5. verify the result against `lib/db/schema/` (the same source of truth the
  *      runner verifies against) and fail loudly if it is incomplete;
- *   5. re-point every foreign key the migration left aimed at another schema
+ *   6. re-point every foreign key the migration left aimed at another schema
  *      (`public`) at the same-named table inside the scratch schema — see
  *      `repointForeignKeys`, which is the reason the factory helpers work;
- *   6. export the handles into `process.env` so forked workers inherit them (see
+ *   7. export the handles into `process.env` so forked workers inherit them (see
  *      `tests/setup/db-env.ts`, which refuses to run without them);
- *   7. return a teardown that drops the schema and ends the pool. It is safe to
+ *   8. return a teardown that drops the schema and ends the pool. It is safe to
  *      call twice.
  *
- * The verification in step 4 and the re-pointing in step 5 are the point of the
+ * WHY THE NAME CARRIES ITS CREATION TIME.
+ * The teardown in step 8 runs only when this setup resolves AND the process exits
+ * cleanly. A test process that is killed, times out, or is OOM-killed therefore
+ * strands its scratch schema forever — and because the old name was just
+ * `peak_test_<pid>`, a later run never reused or noticed it. Measured after one
+ * wave: three orphans (`peak_test_1888021`, `_1892144`, `_1956625`), dropped by
+ * hand; every future wave runs many more test processes, so the residue only
+ * grows. Step 2 closes the mechanism instead of the symptom: the name now says
+ * WHEN it was made, so an orphan is decidable, and the sweep drops exactly the
+ * names it can prove are old. A name it cannot read (the old scheme, or anything
+ * else under the prefix) is REPORTED and left alone — an unrecognised artifact is
+ * not this harness's to delete.
+ *
+ * The verification in step 5 and the re-pointing in step 6 are the point of the
  * file. `scripts/db-migrate.mjs` verifies against `table_schema = 'public'`, and
  * the developer database has those tables already — so a migration that
  * silently failed inside the scratch schema would still print "38/38 verified".
@@ -42,6 +58,205 @@ import { quoteIdentifier } from '../helpers/db'
 
 /** Every scratch schema this harness creates starts with this. */
 export const TEST_SCHEMA_PREFIX = 'peak_test_'
+
+/**
+ * How old a scratch schema must be before the sweep will drop it.
+ *
+ * A live test process is minutes old; two hours cannot race a concurrent run.
+ * The comparison in `staleSchemaNames` is STRICTLY greater-than, so a schema
+ * exactly this old is still treated as live. That asymmetry is deliberate: the
+ * cost of leaving one orphan behind for another run is a wasted schema, while
+ * the cost of a wrong drop is a concurrent run losing its fixture mid-test.
+ */
+export const TEST_SCHEMA_MAX_AGE_MS = 2 * 60 * 60 * 1000
+
+/**
+ * The one name shape this harness owns: `peak_test_<epochMs>_<pid>`.
+ *
+ * `SCHEMA_NAME_PATTERN` is built from `TEST_SCHEMA_PREFIX` rather than spelled
+ * out again, so changing the prefix cannot leave the parser behind. The prefix is
+ * escaped because `peak_test_` contains no metacharacter today but the *point* of
+ * deriving the pattern is that a future prefix might.
+ */
+function escapeRegExp(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+const SCHEMA_NAME_PATTERN = new RegExp(`^${escapeRegExp(TEST_SCHEMA_PREFIX)}([0-9]+)_([0-9]+)$`)
+
+/**
+ * Identifiers reach DDL unparameterised, so a name is validated before it gets
+ * there rather than trusted. Used both for names this file mints and for names
+ * `information_schema` hands back.
+ */
+function assertSafeSchemaName(name: string): void {
+  if (!/^[a-z_][a-z0-9_]*$/.test(name)) {
+    throw new Error(`${LOG} refusing to use "${name}" as a schema name.`)
+  }
+}
+
+/**
+ * The scratch schema for one test process: unique per process AND carrying the
+ * moment it was made, so age is decidable.
+ *
+ * Both halves are validated. A fractional epoch, a negative pid or a name that
+ * exceeds Postgres's 63-byte identifier limit would all be silently lossy — the
+ * first two by producing a name `parseSchemaMadeAt` cannot round-trip, the third
+ * by truncation in the catalog — and a name that cannot be read back is exactly
+ * the orphan the sweep is not allowed to drop. So they throw here, where the
+ * caller is still on the stack.
+ */
+export function schemaNameFor(nowMs: number, pid: number): string {
+  if (!Number.isSafeInteger(nowMs) || nowMs < 0) {
+    throw new Error(
+      `${LOG} refusing to name a scratch schema after "${nowMs}": the timestamp must be a ` +
+        'non-negative integer number of epoch milliseconds.',
+    )
+  }
+  if (!Number.isSafeInteger(pid) || pid <= 0) {
+    throw new Error(
+      `${LOG} refusing to name a scratch schema after pid "${pid}": the pid must be a ` +
+        'positive integer.',
+    )
+  }
+  const name = `${TEST_SCHEMA_PREFIX}${nowMs}_${pid}`
+  assertSafeSchemaName(name)
+  if (name.length > 63) {
+    throw new Error(
+      `${LOG} the scratch schema name "${name}" is ${name.length} characters; Postgres ` +
+        'truncates identifiers at 63, which would make the creation time unreadable.',
+    )
+  }
+  return name
+}
+
+/**
+ * When the schema was made, in epoch milliseconds — or `null` when the name is
+ * not one this harness mints.
+ *
+ * `null` is the load-bearing answer. `peak_test_1234` (the OLD naming scheme,
+ * pid with no timestamp), `peak_test_unparseable`, `peak_other` and every other
+ * shape all return `null`, and the sweep therefore never touches them: absence of
+ * a readable timestamp is not evidence that a schema is dead.
+ */
+export function parseSchemaMadeAt(name: string): number | null {
+  const match = SCHEMA_NAME_PATTERN.exec(name)
+  if (!match) return null
+  const madeAt = Number(match[1])
+  // A digit run longer than 2^53-1 would compare as a float and round; refusing
+  // it keeps "old" from being an accident of precision loss.
+  if (!Number.isSafeInteger(madeAt)) return null
+  return madeAt
+}
+
+/**
+ * The subset of `existing` this harness may drop: names it recognises as its own
+ * (`parseSchemaMadeAt` is non-null) and STRICTLY older than `maxAgeMs`.
+ *
+ * Age rule, stated once because the boundary is asserted in
+ * `tests/setup/harness-hygiene.test.ts`: a schema whose age is exactly
+ * `maxAgeMs` is NOT stale. Only `nowMs - madeAt > maxAgeMs` is dropped.
+ * A name dated in the future (age < 0 — a clock step, or a name minted by a
+ * process whose clock differs) is likewise not stale: it cannot be an orphaned
+ * long-dead run, and dropping it could kill a live one.
+ *
+ * This function decides; `sweepStaleScratchSchemas` performs. Keeping the pure
+ * decision separate is what lets the acceptance test assert the fresh case
+ * without a database, and the real sweep case with one.
+ */
+export function staleSchemaNames(
+  existing: string[],
+  nowMs: number,
+  maxAgeMs: number = TEST_SCHEMA_MAX_AGE_MS,
+): string[] {
+  if (!Number.isSafeInteger(nowMs) || nowMs < 0) {
+    throw new Error(
+      `${LOG} refusing to sweep with "${nowMs}" as the current time; expected non-negative ` +
+        'integer epoch milliseconds. A NaN here would silently sweep nothing.',
+    )
+  }
+  if (!Number.isSafeInteger(maxAgeMs) || maxAgeMs < 0) {
+    throw new Error(
+      `${LOG} refusing to sweep with "${maxAgeMs}" as the max age; expected a non-negative ` +
+        'integer number of milliseconds.',
+    )
+  }
+  return existing.filter((name) => {
+    const madeAt = parseSchemaMadeAt(name)
+    if (madeAt === null) return false // not ours to judge — reported, never dropped
+    const age = nowMs - madeAt
+    if (age < 0) return false // dated in the future: treat as live
+    return age > maxAgeMs // exactly at the threshold is still live
+  })
+}
+
+/** One row of `information_schema.schemata`. */
+type SchemaRow = { schema_name: string }
+
+/**
+ * Drop every scratch schema this harness recognises as stale, and return the
+ * names dropped. Names it does not recognise are logged and LEFT ALONE.
+ *
+ * Called by `globalSetup` BEFORE this run creates its own schema. The listing is
+ * filtered in SQL with `left(schema_name, length($1)) = $1` rather than
+ * `LIKE 'peak_test_%'`, because `_` is a LIKE wildcard and this prefix contains
+ * two of them — `LIKE` would also match `peakZtest...`, i.e. a schema belonging
+ * to someone else.
+ *
+ * Every identifier reaching DDL is quoted with `quoteIdentifier` and validated
+ * first: the names come from the database, not from this file, and "the database
+ * gave it to me" is not a reason to interpolate it raw.
+ */
+export async function sweepStaleScratchSchemas(pool: Pool, nowMs: number): Promise<string[]> {
+  const { rows } = await pool.query<SchemaRow>(
+    `SELECT schema_name
+       FROM information_schema.schemata
+      WHERE left(schema_name, length($1)) = $1
+      ORDER BY schema_name`,
+    [TEST_SCHEMA_PREFIX],
+  )
+
+  const candidates = rows.map((row) => row.schema_name)
+  const stale = staleSchemaNames(candidates, nowMs)
+  const staleSet = new Set(stale)
+
+  for (const name of candidates) {
+    if (staleSet.has(name)) continue
+    const madeAt = parseSchemaMadeAt(name)
+    if (madeAt === null) {
+      console.warn(
+        `${LOG} sweep: leaving "${name}" alone — its name carries no timestamp this harness ` +
+          `can read, so it is not provably an orphan of the "${TEST_SCHEMA_PREFIX}" scheme ` +
+          'and is not this harness to drop.',
+      )
+    } else {
+      console.log(
+        `${LOG} sweep: leaving "${name}" alone — it is ${Math.round((nowMs - madeAt) / 1000)}s ` +
+          `old, at or under the ${Math.round(TEST_SCHEMA_MAX_AGE_MS / 1000)}s staleness ` +
+          'threshold, so a live test process could still own it.',
+      )
+    }
+  }
+
+  const dropped: string[] = []
+  for (const name of stale) {
+    assertSafeSchemaName(name)
+    await pool.query(`DROP SCHEMA IF EXISTS ${quoteIdentifier(name)} CASCADE`)
+    dropped.push(name)
+    console.log(
+      `${LOG} sweep: dropped stale scratch schema "${name}" ` +
+        `(${Math.round((nowMs - (parseSchemaMadeAt(name) ?? nowMs)) / 1000)}s old, CASCADE)`,
+    )
+  }
+
+  if (dropped.length === 0) {
+    console.log(
+      `${LOG} sweep: nothing to drop — ${candidates.length} schema(s) under ` +
+        `"${TEST_SCHEMA_PREFIX}" and none of them provably stale.`,
+    )
+  }
+  return dropped
+}
 
 /** Repo root, from `tests/setup/global-db.ts`. */
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -491,13 +706,15 @@ let scratchPool: Pool | null = null
 let liveSchema: string | null = null
 
 export default async function globalSetup(): Promise<() => Promise<void>> {
-  // 1. Per-process name: two test processes must never share a schema.
-  const schema = TEST_SCHEMA_PREFIX + process.pid
+  // 1. Per-process name, carrying the epoch milliseconds it was made in: two
+  //    test processes must never share a schema, and a later run must be able to
+  //    tell how old this one is (see `sweepStaleScratchSchemas`).
+  const nowMs = Date.now()
+  const schema = schemaNameFor(nowMs, process.pid)
   // The name is interpolated into DDL (identifiers cannot be parameterised), so
-  // it is validated rather than trusted.
-  if (!/^[a-z_][a-z0-9_]*$/.test(schema)) {
-    throw new Error(`${LOG} refusing to use "${schema}" as a schema name.`)
-  }
+  // it is validated rather than trusted — `schemaNameFor` asserts it too, and
+  // this second guard is the one the sweep's DDL relies on as well.
+  assertSafeSchemaName(schema)
 
   const adminUrl = process.env.DATABASE_URL ?? DEV_DATABASE_URL
   const scratchUrl = withSearchPath(adminUrl, schema)
@@ -508,9 +725,24 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   liveSchema = schema
 
   try {
-    // 2. A crashed earlier run must not be able to poison this one.
-    await pool.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
-    await pool.query(`CREATE SCHEMA "${schema}"`)
+    // 2. Sweep BEFORE creating this run's own schema. A killed or timed-out
+    //    earlier process never reached its teardown, so its schema outlives it
+    //    and — unlike the old pid-only name — would never be reused. Only names
+    //    carrying a readable timestamp older than TEST_SCHEMA_MAX_AGE_MS are
+    //    dropped; anything else under the prefix is reported and left alone.
+    console.log(
+      `${LOG} sweep: looking for orphaned scratch schemas older than ` +
+        `${Math.round(TEST_SCHEMA_MAX_AGE_MS / 1000)}s`,
+    )
+    const swept = await sweepStaleScratchSchemas(pool, nowMs)
+    console.log(
+      `${LOG} sweep: dropped ${swept.length} stale schema(s)` +
+        `${swept.length ? `: ${swept.join(', ')}` : ''}`,
+    )
+
+    // 3. A crashed earlier run must not be able to poison this one.
+    await pool.query(`DROP SCHEMA IF EXISTS ${quoteIdentifier(schema)} CASCADE`)
+    await pool.query(`CREATE SCHEMA ${quoteIdentifier(schema)}`)
     console.log(`${LOG} 2/7 reset: dropped (if it existed) and created schema "${schema}"`)
 
     runMigrations(scratchUrl)
@@ -542,7 +774,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     scratchPool = null
     liveSchema = null
     try {
-      await pool.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
+      await pool.query(`DROP SCHEMA IF EXISTS ${quoteIdentifier(schema)} CASCADE`)
     } catch (cleanupError) {
       console.error(`${LOG} could not drop "${schema}" after the failure:`, cleanupError)
     }
@@ -562,7 +794,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     liveSchema = null
     console.log(`${LOG} 7/7 teardown: dropping schema "${ownedSchema}" CASCADE and ending the pool`)
     try {
-      await ownedPool.query(`DROP SCHEMA IF EXISTS "${ownedSchema}" CASCADE`)
+      await ownedPool.query(`DROP SCHEMA IF EXISTS ${quoteIdentifier(ownedSchema)} CASCADE`)
     } finally {
       await ownedPool.end()
     }

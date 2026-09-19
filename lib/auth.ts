@@ -102,6 +102,42 @@ function inviteRefusal(reason: InviteRefusal): APIError {
   })
 }
 
+/**
+ * ── cl-2 · WHY THIS REFUSAL MUST STAY A 403 THE CLIENT CAN SEE ──────────────
+ *
+ * Better Auth's sign-up route folds a 403 thrown out of the user-creation hook
+ * into a SYNTHETIC SUCCESS whenever it decides the caller might be probing for
+ * an account that already exists:
+ *
+ *   node_modules/better-auth/dist/api/routes/sign-up.mjs:234
+ *     if (e.statusCode === 403 && shouldReturnGenericDuplicateResponse) return buildGenericDuplicateResponse()
+ *
+ * and that flag is, at sign-up.mjs:162,
+ *
+ *   shouldReturnGenericDuplicateResponse =
+ *     options.emailAndPassword.requireEmailVerification ||
+ *     options.emailAndPassword.autoSignIn === false
+ *
+ * The `betterAuth({ ... })` call below sets `emailAndPassword: { enabled: true,
+ * autoSignIn: true }` and declares no `requireEmailVerification`. Both halves of
+ * that flag are therefore FALSE, the branch at :234 is DEAD, and every refusal
+ * built here reaches the client as a real 403 — which is the whole enforcement.
+ *
+ * DO NOT FLIP EITHER KNOB WITHOUT READING THIS. Setting `autoSignIn: false`, or
+ * adding `requireEmailVerification: true`, wakes the branch: an INVITE_REFUSAL
+ * is then answered with HTTP 200 and the synthetic shape built at sign-up.mjs:166
+ * (`buildGenericDuplicateResponse` → `buildSyntheticUserOutput` →
+ * `{ token: null, user: <a user object with a freshly generated id> }`) —
+ * a user the database never saw, and no session. The client checks
+ * `result.error === undefined` and would redirect into an account that does not
+ * exist, with the refusal surfacing NOWHERE: a silent security failure.
+ *
+ * The guard is `tests/invites/enforcement.test.ts`'s cl2 unit, which asserts the
+ * 403, the exact refusal message, the ABSENCE of `token` and of a `user` object,
+ * and an unchanged `user` row count. A config edit that wakes :234 turns that
+ * test red instead of turning the refusal quiet.
+ */
+
 /** What the `before` hook decided, waiting for that same creation's `after` hook. */
 type InviteDecision =
   | { kind: 'open'; email: string }

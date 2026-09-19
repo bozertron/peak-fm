@@ -112,6 +112,13 @@ pnpm db:check     # all tables verified
 pnpm check:links  # no unowned dead links
 ```
 
+While you are working, run **one file at a time** with `pnpm test <path>` — for
+example `pnpm test tests/storage/exif.test.ts` — and leave the full `pnpm test`
+for the end. Only the `pnpm test` script loads `.env.local`, so a bare
+`pnpm exec vitest run <path>` stops with `BETTER_AUTH_SECRET is not set` and
+`Refusing to invent a secret.` That is the harness refusing to invent a secret,
+not a broken test.
+
 Plus your ticket's own **Verification evidence** section, which names the
 specific proof it wants.
 

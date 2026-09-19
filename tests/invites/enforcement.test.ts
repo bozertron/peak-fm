@@ -268,6 +268,68 @@ describe('the gate is closed (flag ON)', () => {
     expect(await countRows('user')).toBe(0)
   })
 
+  /**
+   * cl-2 — THE REFUSAL MUST STAY VISIBLE TO THE CLIENT.
+   *
+   * Every other refusal assertion in this file is about the DATABASE (no `user`
+   * row, no consumed use, no audit entry) or about the handler's parsed result.
+   * This one is about what a browser actually receives, because that is what the
+   * caller acts on: `components/auth-form.tsx` branches on `result.error`.
+   *
+   * UPSTREAM BRANCH UNDER GUARD — `node_modules/better-auth/dist/api/routes/sign-up.mjs:234`:
+   *
+   *   if (e.statusCode === 403 && shouldReturnGenericDuplicateResponse) return buildGenericDuplicateResponse()
+   *
+   * where `shouldReturnGenericDuplicateResponse` (sign-up.mjs:162) is TRUE when
+   * `emailAndPassword.requireEmailVerification` is set OR `autoSignIn === false`.
+   * `lib/auth.ts` sets `autoSignIn: true` and no `requireEmailVerification`, so the
+   * flag is false today and the 403 built by `inviteRefusal` is rethrown through
+   * `sign-up.mjs:233` untouched. If either knob were flipped, a REFUSED sign-up
+   * would instead come back as HTTP 200 carrying the synthetic shape from
+   * `buildGenericDuplicateResponse` (`sign-up.mjs:166-197`):
+   * `{ token: null, user: <a user object with a generated id that was never
+   * inserted> }`. The assertions below exist so that configuration change breaks
+   * THIS TEST rather than the refusal — including the `token` key, which is
+   * present-but-`null` in the synthetic body, so `toBeUndefined` is what tells
+   * "no synthetic token" apart from "a null synthetic token".
+   */
+  it('keeps an uninvited sign-up a client-visible 403 and never the synthetic-duplicate success (cl2.A1/A2)', async () => {
+    await enableInviteOnly()
+    const email = freshEmail()
+    const usersBefore = await countRows('user')
+
+    const { response, body } = await postSignUp({ email })
+
+    // ── 1. The status a browser receives. Flipping `autoSignIn` to false turns
+    // this into a 200 and fails here first.
+    expect(response.status).toBe(403)
+
+    // ── 2. The client-visible refusal itself: the exact message `lib/auth.ts`
+    // produces for the `missing` reason, plus its stable code and reason.
+    expect(body.json?.code, body.text).toBe('INVITE_REFUSED')
+    expect(body.json?.reason, body.text).toBe('missing')
+    expect(body.json?.message, body.text).toBe(
+      'A beta invite code is required to create an account while Peak is in closed beta.',
+    )
+
+    // ── 3. The synthetic-duplicate SUCCESS shape must be absent. `token` and the
+    // fabricated `user` object are exactly what sign-up.mjs:166-197 returns in
+    // place of the refusal once the branch at :234 is live.
+    const keys = Object.keys(body.json ?? {})
+    expect(keys).not.toContain('token')
+    expect(keys).not.toContain('user')
+    expect(body.json?.token).toBeUndefined()
+    expect(body.json?.user).toBeUndefined()
+    expect(body.text).not.toContain('"token"')
+
+    // ── 4. And nothing was created: the refusal is not a success with a hidden
+    // row. The count is read from the scratch schema, which `beforeEach` reset.
+    expect(usersBefore).toBe(0)
+    expect(await countRows('user')).toBe(usersBefore)
+    expect(await readUsersByEmail(email)).toHaveLength(0)
+    expect(await countRows('session')).toBe(0)
+  })
+
   it('refuses revoked, expired, exhausted and mis-addressed codes with their OWN reason', async () => {
     await enableInviteOnly()
 
