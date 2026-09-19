@@ -5,6 +5,9 @@ Supersedes the previous `AREA-1xx` backlog in full; see `../HISTORY.md`.
 
 ## Before you write anything
 
+**Working an individual ticket?** Start with `../../AGENT-START-HERE.md` — it
+is the cold-start briefing and links everything below in the right order.
+
 1. `../doctrine/PROHIBITED.txt` — 10 rules plus a closer. Binding. Note **D1**.
 2. `../doctrine/AREA-107-agent-orchestration-protocol.md` — how waves are run.
 3. `docs/PEAK-PRODUCT-SPEC.md` — what the product is.

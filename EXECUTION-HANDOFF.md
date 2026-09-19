@@ -9,6 +9,10 @@ whatever is at its head, and the cleanup pass of 2026-09-19 is part of it.
 
 Read this document in full before your first tool call. It is the contract.
 
+**Dispatching individual agents?** Paste `AGENT-START-HERE.md` at the top of
+each agent session. This document is the orchestrator's plan; that one is the
+per-agent briefing.
+
 ---
 
 ## 0. TL;DR for the orchestrator
