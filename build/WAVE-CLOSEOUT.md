@@ -68,7 +68,7 @@ evidence; commands and their output are.
 | **A failed test run leaves its schema for up to 2h** | **BY DESIGN, bounded** | Observed: a deliberately failed mutation run left one schema behind. The sweep reclaims it once older than `TEST_SCHEMA_MAX_AGE_MS` (2h). The threshold exists so a sweep cannot race a concurrent run; shortening it trades one failure mode for another |
 | **Six SQL identifier-interpolation advisories in `tests/setup/global-db.ts`** | **EXPLAINED, mitigations verified by reading** | `DROP/CREATE SCHEMA` and `ALTER TABLE … DROP CONSTRAINT` cannot take bind parameters — identifiers are not values. Every site routes through `quoteIdentifier()`, which rejects empty/non-string/NUL and **doubles embedded quotes**, and the sweep additionally runs `assertSafeSchemaName()` (`^[a-z_][a-z0-9_]*$`) on names read back from `information_schema`. The analyzer cannot see through the helper. The "TABL typo" advisory is the word "CREATE TABLEs" in a comment |
 | **`peak-fm.code-workspace`** | **COMMITTED** | It sat untracked and un-ignored, so a bare `git add -A` would have swept it into an agent's commit — a critic flagged it as exactly that hazard. It is the owner's 60-byte VS Code workspace file, contains no secrets, and is one revert away if unwanted |
-| **CI has never executed** | **UNBLOCKED AS OF THIS PUSH** | This push is its first run. PEAK-208's acceptance requires three deliberately-broken runs (type error, dropped table, dead link) as failed-run evidence |
+| **CI has never executed** | **UNBLOCKED AS OF THIS PUSH — and it FAILED, for a reason worth reading** | Its first run (id `35433411216`, commit `b8a9063`) **passed lint, typecheck, build, schema verification and the whole 174-test suite on a clean runner**, then failed at *Create the smoke test's admin account*: `sign-up for tester@peak.local failed: HTTP 403 {"code":"INVITE_REFUSED","reason":"missing"}`. That is **Wave 1a's invite enforcement working correctly** — `pnpm db:seed` turns `beta.invite_only` on, and the CI step signs up through the real endpoint, which now requires a code. Downstream, the dead-link check, Playwright install and smoke step were **skipped**, so PEAK-208's three negative controls remain unproven. **Fix (not applied — the owner deferred further waves):** seed a real invite in the smoke job and send `x-peak-invite-code`, which keeps enforcement ON and proves the invite path end-to-end in CI; or disable the flag for that job only. The same consequence hits a local `pnpm smoke` after a seed, so PEAK-240 changed a documented operator procedure |
 | **The smoke gate vs `<Analytics/>`** | **BLOCKED ON THE OWNER (D3-shaped)** | Production renders `<Analytics/>`; `_vercel/insights/*` 404s off Vercel; `scripts/smoke-test.mjs` exits 1 on *any* console error while its own header documents that 404 as expected. Either guard/remove `<Analytics/>` (registrar-owned) or make the smoke rule tolerate that one documented URL. **Not a builder's call** |
 | **`packageManager: pnpm@12.3.4` vs a lockfile written by 11.5.2** | **RECORDED** | CI pins 11.5.2 explicitly, which works around it. `package.json` still declares 12.3.4; `pnpm install --frozen-lockfile` under it is expected to fail. Registrar-owned, deliberately untouched |
 | **`package.json` `"name": "my-project"`** | **RECORDED** | A leftover from scaffolding. Cosmetic, out of every ticket's scope, reported rather than silently changed |
@@ -85,6 +85,7 @@ evidence; commands and their output are.
 ## 6. Commits in this close-out
 
 ```text
+b8a9063  [W-PEAK-01a-closure-2] Close the three gaps the closure critics found; restore PEAK-240 DONE
 85b4669  [W-PEAK-01a-closure] Harness schema-leak sweep, client-visible refusal, scoped-run doc
 3288bf7  [W-PEAK-01a] Withdraw a premature DONE on PEAK-240
 08cf832  [W-PEAK-01a] Board: flip 230/240 to DONE, 209 to PARTLY DONE, name the residue
@@ -93,3 +94,31 @@ evidence; commands and their output are.
 030437d  [W-PEAK-00] Close D1 with the canonical 11-rule block; docs truth pass
 18119de  [W-PEAK-00] Wave 0 foundation gate: test harness, lint/format, CI
 ```
+
+Pushed to `origin/main` as `8f27a6f..b8a9063`.
+
+## 7. CI's first run — the full result, and what it proves
+
+Run `35433411216` on `b8a9063`. **Passed:** lint, typecheck, build, `db:migrate` + `db:check` (gate 1 of 2), and
+`pnpm test` — all on a clean GitHub runner with a fresh Postgres. That is a stronger statement than any local green:
+the harness's per-process scratch schema, its 61-foreign-key re-point and its stale-schema sweep all work on a machine
+that has never seen this repo.
+
+**Failed at** *Create the smoke test's admin account*, which signs up `tester@peak.local` through the real Better Auth
+endpoint. The seed step had just turned `beta.invite_only` **on**, so PEAK-240's enforcement refused it:
+
+```text
+sign-up for tester@peak.local failed: HTTP 403
+{"message":"A beta invite code is required to create an account while Peak is in closed beta.",
+ "code":"INVITE_REFUSED","reason":"missing"}
+```
+
+This is the enforcement behaving correctly, not a regression. It is also a genuine finding: **one wave's change broke
+another wave's consumer, and only making CI actually run could surface it.** Consequences: the dead-link check, the
+Playwright install and the smoke step were *skipped*, so PEAK-208's three negative controls (type error, dropped table,
+dead link) are still unproven, and PEAK-208 stays PARTLY DONE.
+
+**Recommended fix, deliberately not applied** (the owner deferred further waves): in the smoke job, seed a real invite
+row and send it as `x-peak-invite-code`, so enforcement stays ON and CI proves the invite path end to end. The narrower
+alternative — turning the flag off for that job only — works but tests a configuration production will not use.
+
