@@ -1,4 +1,4 @@
-import { and, desc, eq, or, inArray, gte, isNull } from 'drizzle-orm'
+import { and, desc, eq, or, gte, isNull } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { plan, planProposal, communityItem, user } from '@/lib/db/schema'
 import type { PlanScope } from '@/lib/db/schema'

@@ -14,7 +14,13 @@
     "db:check": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs --check",
     "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.mjs",
     "smoke": "node scripts/smoke-test.mjs",
-    "check:links": "node scripts/check-links.mjs"
+    "check:links": "node scripts/check-links.mjs",
+    "test": "node --env-file-if-exists=.env.local ./node_modules/vitest/vitest.mjs run",
+    "test:watch": "node --env-file-if-exists=.env.local ./node_modules/vitest/vitest.mjs",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
   },
   "dependencies": {
     "@vercel/analytics": "1.6.1",
@@ -26,12 +32,14 @@
     "react-dom": "^19"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.14",
     "@types/node": "^24",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.10",
     "jiti": "^2.7.0",
-    "typescript": "5.7.3"
+    "typescript": "5.7.3",
+    "vitest": "5.0.1"
   }
 }

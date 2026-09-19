@@ -59,7 +59,9 @@ export default async function PlansPage({
     { key: 'community', label: 'Community', hint: 'Local events and announcements asking for feedback.' },
   ] as const
 
-  const active = TABS.find((t) => t.key === scope)!
+  // TABS is non-empty by construction, so TABS[0] is a real default; an unknown scope
+  // (user-controlled via ?scope=) already normalises to 'personal' above, which is TABS[0].
+  const active = TABS.find((t) => t.key === scope) ?? TABS[0]
 
   return (
     <main className="page-section">

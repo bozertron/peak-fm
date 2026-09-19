@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { AccountGraphic } from '@/components/account-graphic'
 import type { ListingCard } from '@/lib/queries/listings'
@@ -37,8 +38,8 @@ export function ClosedNotice({ label }: { label: string }) {
     <div className="notice notice-warn">
       <strong>{label} is not open yet.</strong>
       <span>
-        The data below is live, but the operator has this surface switched off for members. An
-        admin can open it under Feature flags in the <Link href="/admin">admin dashboard</Link>.
+        The data below is live, but the operator has this surface switched off for members. An admin
+        can open it under Feature flags in the <Link href="/admin">admin dashboard</Link>.
       </span>
     </div>
   )
@@ -94,10 +95,15 @@ export function ListingGrid({ listings }: { listings: ListingCard[] }) {
             <div className="listing-card-image">
               {item.imageUrl ? (
                 // Images are user-uploaded and already sized on upload;
-                // next.config sets `images.unoptimized`, so a plain img is
-                // what next/image would render anyway.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.imageUrl} alt={item.title} loading="lazy" />
+                // next.config sets `images.unoptimized`, so no optimizer work
+                // is added here — next/image renders a plain <img> into this
+                // already position:relative, aspect-ratio:4/3 container.
+                <Image
+                  src={item.imageUrl}
+                  alt={item.title}
+                  fill
+                  sizes="(max-width: 700px) 100vw, 33vw"
+                />
               ) : (
                 <div className="listing-card-noimage" aria-hidden="true">
                   <span>No photo yet</span>

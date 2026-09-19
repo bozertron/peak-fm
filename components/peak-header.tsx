@@ -67,7 +67,11 @@ export function PeakHeader({
   }, [menuOpen])
 
   // Close the menu whenever the route changes.
-  useEffect(() => setMenuOpen(false), [pathname])
+  useEffect(() => {
+    // The route change IS the trigger: reading `pathname` here is what makes
+    // the dependency real rather than incidental.
+    if (pathname) setMenuOpen(false)
+  }, [pathname])
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
 
@@ -87,7 +91,7 @@ export function PeakHeader({
           >
             {surface.label}
             {surface.href === '/communicate' && unreadCount > 0 && (
-              <span className="nav-badge" aria-label={`${unreadCount} unread`}>
+              <span className="nav-badge" role="status" aria-label={`${unreadCount} unread`}>
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}

@@ -1,5 +1,5 @@
 import { desc, eq, sql, inArray, type SQL } from 'drizzle-orm'
-import { type PgTable } from 'drizzle-orm/pg-core'
+import type { PgTable } from 'drizzle-orm/pg-core'
 import { db } from '@/lib/db'
 import {
   user,

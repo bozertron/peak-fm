@@ -1,4 +1,4 @@
-import { and, eq, gte, lte, ilike, desc, asc, sql, inArray, notInArray } from 'drizzle-orm'
+import { and, eq, gte, lte, desc, asc, sql, inArray, notInArray } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import {
   listing,

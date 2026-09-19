@@ -1,0 +1,255 @@
+# Peak — continuous integration (PEAK-208)
+#
+# THE TWO GATES THAT MATTER MOST ARE THE TWO THAT HAVE ALREADY FAILED IN
+# PRODUCTION-SHAPED WAYS, AND THEY RUN FOR REAL HERE — NOT AS COMMENTS:
+#
+#   1. `pnpm db:migrate && pnpm db:check` against a DISPOSABLE Postgres. AREA-109
+#      was a production sign-in 500 whose root cause was that no deploy step ever
+#      created the tables. Nothing detected it because nothing ever checked. The
+#      service container below starts empty, so the only way `db:check` can pass
+#      is if this run's migration really created every table `lib/db/schema/`
+#      declares.
+#   2. `pnpm start` → `pnpm check:links` → `pnpm smoke` against that real server.
+#      `check:links` catches the eighteen-dead-call-to-action class (a UI linking
+#      at routes that do not exist yet). `smoke` drives sign-in, URL-driven
+#      filters, a Server Action write, the admin role gate, a feature-flag flip
+#      without a deploy, and the audit log — in a browser.
+#
+# A gate that has never been observed to fail has not been tested, so this
+# ticket's negative controls (a deliberate type error, a deliberately missing
+# schema) and the durable lint control in `tests/gates/lint-gate.test.ts` exist
+# alongside it. No step here is skipped, made non-blocking, or disabled behind a
+# false condition.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# One run per BRANCH: a new push cancels the run it supersedes instead of
+# queueing behind it. `github.head_ref` is the source branch on a
+# `pull_request` event (where `github.ref` is `refs/pull/<n>/merge`), so a PR
+# and its branch share one group.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+# Only the checkout needs a token, and it only needs to read.
+permissions:
+  contents: read
+
+env:
+  # `localhost`, never `127.0.0.1`: they are different origins to Better Auth,
+  # and BETTER_AUTH_URL names the first (docs/PEAK-ARCHITECTURE.md §4.2). Both
+  # the server steps and the Vitest harness read these.
+  BETTER_AUTH_URL: http://localhost:3000
+  DATABASE_URL: postgres://peak:peak@localhost:5432/peak
+  # BETTER_AUTH_SECRET is generated per run — see the second step. It is a real
+  # value, not a placeholder: tests/setup/db-env.ts refuses to invent one, and
+  # unset means Better Auth signs sessions with its default secret.
+
+jobs:
+  gates:
+    name: lint, typecheck, build, schema, tests, links, smoke
+    runs-on: ubuntu-latest
+    # A gate that hangs is a gate that gets deleted. Bound the whole job.
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: peak
+          POSTGRES_PASSWORD: peak
+          POSTGRES_DB: peak
+        ports:
+          - 5432:5432
+        # GitHub starts service containers before the first step and holds the
+        # job until this health gate reports healthy, so every step below talks
+        # to a Postgres that has finished initialising. `pg_isready` ships in the
+        # postgres image.
+        options: >-
+          --health-cmd "pg_isready -U peak -d peak"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Generate an ephemeral auth secret
+        # Real value for this job, generated fresh because the database it signs
+        # sessions for is disposable. The length check is the difference between
+        # "openssl produced a secret" and "openssl produced nothing and the job
+        # silently ran on an empty secret".
+        run: |
+          secret="$(openssl rand -base64 32)"
+          if [ "${#secret}" -lt 32 ]; then
+            echo "openssl rand returned ${#secret} characters; refusing to use it" >&2
+            exit 1
+          fi
+          echo "BETTER_AUTH_SECRET=${secret}" >> "$GITHUB_ENV"
+          echo "generated a ${#secret}-character BETTER_AUTH_SECRET for this run"
+
+      # pnpm IS PINNED HERE, AND THE PIN IS DELIBERATE.
+      #
+      # package.json says "packageManager": "pnpm@12.3.4"; pnpm-lock.yaml is
+      # lockfileVersion 9.0, written by pnpm 11.5.2 — the version measured in
+      # this project's environment. This workflow is the single pin and it is
+      # 11.5.2, the version that produced the committed lockfile.
+      #
+      # pnpm/action-setup REFUSES an explicit `version` that disagrees with
+      # package.json's `packageManager` ("Multiple versions of pnpm specified"),
+      # so the resolver is pointed at pnpm-workspace.yaml, which is a real file
+      # in the repo that declares no packageManager. Removing that line makes
+      # the action install 12.3.4 and fail the job. package.json is
+      # registrar-owned: reconcile it with the lockfile rather than editing the
+      # pin here.
+      - name: Install pnpm 11.5.2 (the version that wrote this lockfile)
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.5.2
+          package_json_file: pnpm-workspace.yaml
+
+      - name: Set up Node 22 with a pnpm store cache
+        uses: actions/setup-node@v4
+        with:
+          # `22` resolves to the newest 22.x, which matters: the package scripts
+          # pass `node --env-file-if-exists`, added in v22.9.0 (and stable in
+          # v22.21.0). It must come AFTER pnpm/action-setup — `cache: pnpm`
+          # shells out to the pnpm this job just installed.
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Migrate and verify the schema (gate 1 of 2)
+        # db:migrate APPLIES Better Auth's plan, the generated Drizzle SQL and
+        # the NOT NULL hardening, then verifies. db:check verifies without
+        # applying, which is the shape a deploy runs. This container is empty and
+        # disposable, so a migration that silently creates nothing fails here.
+        run: pnpm db:migrate && pnpm db:check
+
+      - name: Test
+        # The Vitest harness (tests/setup/global-db.ts) creates and migrates its
+        # OWN scratch schema inside this disposable database, then drops it, so
+        # this step cannot leave state behind for the smoke test below.
+        run: pnpm test
+
+      - name: Seed the reference data the smoke test needs
+        # markets, categories and feature flags. Idempotent, reference data only
+        # — no sample people or listings (see the header of scripts/db-seed.mjs).
+        # surface.buy is seeded OFF, which is what the smoke test asserts.
+        run: pnpm db:seed
+
+      - name: Start the production server in the background
+        run: |
+          # Output goes to a file, not to the step's inherited stdout: a piped
+          # background process keeps the pipe open and the step would hang until
+          # the job timeout instead of finishing.
+          pnpm start > "$RUNNER_TEMP/next-start.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://localhost:3000/; then
+              echo "server answered on http://localhost:3000 after ${attempt}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "server did not answer within 60s; pnpm start output follows" >&2
+          cat "$RUNNER_TEMP/next-start.log" >&2
+          exit 1
+
+      - name: Create the smoke test's admin account
+        # scripts/smoke-test.mjs documents its prerequisites, and this step is
+        # exactly those prerequisites made true rather than assumed: a user with
+        # email tester@peak.local and password correct-horse-battery, promoted to
+        # admin (the flag stays off, seeded in the step above).
+        #
+        # The account is created through Better Auth's own sign-up endpoint, not
+        # by inserting an `account` row with a hand-written password hash. The
+        # hash is Better Auth's to write; a hand-rolled one would be a fake that
+        # could pass here and fail in production, which is the failure mode this
+        # whole workflow exists to remove.
+        run: |
+          node --input-type=module <<'NODE'
+          const base = process.env.BETTER_AUTH_URL
+          if (base !== 'http://localhost:3000') {
+            throw new Error(`BETTER_AUTH_URL is ${base}; the smoke test drives http://localhost:3000`)
+          }
+
+          const email = 'tester@peak.local'
+          const res = await fetch(`${base}/api/auth/sign-up/email`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', origin: base },
+            body: JSON.stringify({
+              email,
+              password: 'correct-horse-battery',
+              name: 'Peak Tester',
+            }),
+          })
+          const body = await res.text()
+          if (!res.ok) {
+            throw new Error(`sign-up for ${email} failed: HTTP ${res.status} ${body}`)
+          }
+          console.log(`created ${email} through Better Auth's sign-up endpoint (HTTP ${res.status})`)
+
+          const { Pool } = await import('pg')
+          const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+          try {
+            const { rowCount } = await pool.query(
+              'UPDATE "user" SET "role" = $1 WHERE "email" = $2',
+              ['admin', email],
+            )
+            if (rowCount !== 1) {
+              throw new Error(
+                `expected exactly 1 user row promoted to admin, the UPDATE changed ${rowCount}`,
+              )
+            }
+            console.log(`promoted ${email} to admin (1 row)`)
+          } finally {
+            await pool.end()
+          }
+          NODE
+
+      - name: Check for dead links (gate 2 of 2, part 1)
+        # --allow-known tolerates the ticket-owned gaps in KNOWN_MISSING; any
+        # OTHER broken link is a failure, which is the class this gate exists for.
+        run: pnpm check:links --allow-known
+
+      - name: Install Playwright and Chromium (chromium only)
+        # Playwright is DELIBERATELY not a project dependency — its header in
+        # scripts/smoke-test.mjs says why: it pulls browser binaries that only the
+        # verification path needs. `npm install` at the repo root would reify the
+        # whole package.json dependency tree over pnpm's layout and rewrite the
+        # lockfile, and `pnpm add` has no --no-save option (measured: ERR_PNPM_
+        # OPTION_NOT_SUPPORTED). So it is installed into a scratch prefix and
+        # linked in for this run only: package.json and pnpm-lock.yaml are not
+        # touched, and the step ends by proving the module resolves from the repo
+        # root, which is what `pnpm smoke` needs.
+        run: |
+          npm install --prefix "$RUNNER_TEMP/playwright" --no-audit --no-fund playwright@1.63.0
+          "$RUNNER_TEMP/playwright/node_modules/.bin/playwright" install --with-deps chromium
+          ln -sfn "$RUNNER_TEMP/playwright/node_modules/playwright" node_modules/playwright
+          node --input-type=module -e "
+            const { chromium } = await import('playwright')
+            if (!chromium) throw new Error('playwright resolved but exports no chromium')
+            console.log('playwright/chromium resolvable from the repo root')
+          "
+
+      - name: Smoke test (gate 2 of 2, part 2)
+        # Runs against the server started above, on the seeded database, as the
+        # admin account created above. `pnpm smoke` creates smoke-*.png
+        # screenshots in the working directory as evidence.
+        run: pnpm smoke
