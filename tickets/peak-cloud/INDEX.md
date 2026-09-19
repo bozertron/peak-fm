@@ -14,7 +14,7 @@ headers — if this disagrees with a ticket, the ticket is right.
 | [206](PEAK-206-test-harness.md) | **0** | Test harness | none | **DONE — verified** (W-PEAK-00, 2026-09-19) |
 | [207](PEAK-207-lint-and-format.md) | **0** | Lint and format | none | **DONE — verified** (W-PEAK-00, 2026-09-19) |
 | [208](PEAK-208-continuous-integration.md) | **0** | Continuous integration | PEAK-206, PEAK-207 | **PARTLY DONE** — workflow written and YAML-validated, never executed; smoke step blocked on the `<Analytics/>` 404 question |
-| [209](PEAK-209-media-storage.md) | **1** | Media storage | none | OPEN — interface unblocked, **backend blocked by D3** |
+| [209](PEAK-209-media-storage.md) | **1** | Media storage | none | **PARTLY DONE** — interface, validation, EXIF strip, test store, orphans, resolver all land and verify; **backend blocked by D3** |
 | [210](PEAK-210-buy-browse-filters.md) | **2** | Buy: category browse and deep filtering | PEAK-213, PEAK-220 *(needs real supply)* | OPEN |
 | [211](PEAK-211-buyer-questions.md) | **3** | Buy: buyer question sets | PEAK-210, **PEAK-300** | OPEN |
 | [212](PEAK-212-accounting-package.md) | **3** | Accounting Package export | PEAK-230, PEAK-232 | OPEN — **tax fields blocked by D5** |
@@ -22,10 +22,10 @@ headers — if this disagrees with a ticket, the ticket is right.
 | [220](PEAK-220-presentation-builder.md) | **2** | Sell: Build Product Presentation | **PEAK-222**, PEAK-209 | OPEN |
 | [221](PEAK-221-product-widget-creator.md) | **2** | Sell: LLM-assisted Product Widget Creator | **PEAK-222** | OPEN — manual path unblocked, **LLM path blocked by D6** |
 | [222](PEAK-222-listing-composer.md) | **1** | Shared listing composer | PEAK-209 | OPEN |
-| [230](PEAK-230-payment-provider-seam.md) | **1** | Payment provider seam | PEAK-200 | OPEN |
+| [230](PEAK-230-payment-provider-seam.md) | **1** | Payment provider seam | PEAK-200 | **DONE — verified** (W-PEAK-01a, 2026-09-19) |
 | [231](PEAK-231-stripe-connect.md) | **2** | Stripe Connect implementation | PEAK-230 | OPEN — **blocked by D4** |
 | [232](PEAK-232-in-chat-checkout.md) | **3** | In-chat checkout | PEAK-231, **PEAK-300** | OPEN |
-| [240](PEAK-240-invite-redemption.md) | **1** | Beta invite redemption | PEAK-203, PEAK-204 | OPEN |
+| [240](PEAK-240-invite-redemption.md) | **1** | Beta invite redemption | PEAK-203, PEAK-204 | **DONE — verified** (W-PEAK-01a, 2026-09-19) — enforced at the real endpoint, 13 attack classes refused |
 | [241](PEAK-241-flag-rollout.md) | **3** | Feature flag rollout evaluation | PEAK-203 | OPEN |
 | [242](PEAK-242-beta-feedback-widget.md) | **2** | In-app beta feedback widget | PEAK-203 | OPEN |
 | [243](PEAK-243-report-creation.md) | **3** (registrar placement pass) | Member-side reporting | PEAK-203 | OPEN |

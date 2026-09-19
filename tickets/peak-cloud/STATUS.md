@@ -1,7 +1,35 @@
 # peak-cloud — Status Board
 
-**Updated:** 2026-09-19. Wave 0 has landed (below); the pressure-test notes and
-wave plan underneath are retained as the record of how the order was derived.
+**Updated:** 2026-09-19. Waves 0 and 1a have landed (below); the pressure-test
+notes and wave plan underneath are retained as the record of how the order was derived.
+
+## Wave 1a — landed and verified, 2026-09-19
+
+| Ticket | State | Evidence |
+|---|---|---|
+| **PEAK-230** Payment provider seam | **DONE — verified** | `lib/commerce/{provider,state,index}.ts`. `PaymentProvider` matches `docs/PEAK-COMMERCE.md` §2 member-for-member; `ProviderEvent` (which the spec referenced but never defined) is now defined with a stable event id, the `providerRef` join and `ORDER_STATUSES` imported from the schema. `createPayment` is idempotent on `orderId` — the double-submit test asserts one charge **and** an identical `providerRef`; an unsigned webhook rejects and records the reason. The resolver **throws** naming D4/PEAK-231 rather than returning a stand-in |
+| **PEAK-209** Media storage | **PARTLY DONE** — interface half complete, **backend still blocked by D3** | `lib/storage/{types,validate,exif,local,orphans,index}.ts`. Validation runs **before** URL issuance: `createMediaUploadUrl` calls `assertUploadAllowed`, and `tests/storage/index.test.ts:457` asserts the store was never asked — with a positive control at :478 so the negative assertion is not vacuous. EXIF GPS stripping is real byte-level APP1/IFN work with sources cited. The local-disk store is a test-only seam; the resolver throws naming D3 rather than falling back to it |
+| **PEAK-240** Beta invite redemption | **DONE — verified** | `beta.invite_only` is now enforced **at the real endpoint**, not in the page. A blind adversarial critic drove **13 attack classes** through the real `auth.handler()`: every attempt refused, **zero user rows created** (counted with the real helper), and its own kill-mutation proved the attack tested the gate. The final-use race is proven by a 4-client concurrency test that the orchestrator then killed personally: neutering the guard produced `expected [ {ok:true}, {ok:true} ] to have a length of 1 but got 2` |
+
+Wave record: `~/.pi/agent/projects-memory/peak-fm/waves/W-PEAK-01a.md` · bar: `build/WAVE1a-BAR.md` ·
+fix rounds: `build/WAVE1a-FIX-{1,2}-REPORT.md`
+
+**Gates at close (re-run by the orchestrator, not reported):** `pnpm db:check` 38/38 · `typecheck` clean · `lint` exit 0 (90 files) ·
+`pnpm test` 16 files / **161 tests** exit 0 · `build` clean (14 routes) · `check:links` no unowned dead links · 0 scratch schemas survive ·
+no registrar-owned file touched.
+
+**Three items Wave 1a hands to a closure pass, named rather than implied:**
+
+1. **A killed test process leaks its scratch schema.** Three orphans survived this wave
+   (`peak_test_1888021`, `_1892144`, `_1956625`) because teardown only runs on a clean exit, and the per-process name means a
+   re-run never reuses them. They were dropped by hand (0 remain), but the *mechanism* needs a stale-schema sweep keyed on a
+   timestamped name — otherwise every future wave accumulates them.
+2. **A latent silent-failure hazard at the auth boundary.** Better Auth's sign-up route returns HTTP **200 with a synthetic
+   success shape** for a 403 when `requireEmailVerification` is set or `autoSignIn` is false — and the invite refusal *is* a 403.
+   Today both knobs are safe so the branch is dead and every refusal is clean, but flipping either would make a refused sign-up
+   look successful to the client with no error anywhere. Needs an assertion on the **client-visible** status.
+3. **Scoped test runs need the env file.** `pnpm exec vitest run <file>` fails loudly (`BETTER_AUTH_SECRET is not set`) because
+   only the `pnpm test` script loads `.env.local`. Correct scoped form: `pnpm test <path>`. Wave prompts must use that form.
 
 ## Wave 0 — landed and verified, 2026-09-19
 
@@ -76,7 +104,7 @@ links to).
 These three are small, independent, and touch nothing the surface tickets
 touch. Run them in parallel, first.
 
-### Wave 1 — extension points. These unblock everything downstream.
+### Wave 1 — extension points. Wave 1a (209, 230, 240) **landed 2026-09-19** — see the top of this file. PEAK-222 and PEAK-300 remain, and are the two that matter most.
 
 | Ticket | Unblocks |
 |---|---|
