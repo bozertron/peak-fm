@@ -13,7 +13,7 @@
  * developer's working database.
  *
  * WHAT "RESET" MEANS
- * `resetTestDatabase()` truncates every base table in `current_schema()` in ONE
+ * `resetTestDatabase()` truncates every base table in the expected scratch schema in ONE
  * statement so a test starts from an empty fixture without paying for a
  * re-migration. The tables are discovered, not hardcoded: the fixture is
  * whatever `scripts/db-migrate.mjs` produced, and a hand-written list would be
@@ -113,7 +113,7 @@ type TableRow = { table_name: string }
 /**
  * Empty the scratch schema between tests: ONE
  * `TRUNCATE <tables> RESTART IDENTITY CASCADE` over every base table in
- * `current_schema()`, minus the migration journals. `CASCADE` covers the
+ * the expected scratch schema, minus the migration journals. `CASCADE` covers the
  * foreign keys between them; `RESTART IDENTITY` makes generated ids predictable
  * for the test that reads them back.
  */
@@ -145,6 +145,7 @@ export async function resetTestDatabase(): Promise<void> {
         'its name. Refusing to truncate an unverified schema.',
     )
   }
+  const quotedExpectedSchema = quoteIdentifier(expectedSchema)
 
   const { rows: schemaRows } = await pool.query<{ schema: string | null }>(
     'SELECT current_schema() AS schema',
@@ -168,9 +169,10 @@ export async function resetTestDatabase(): Promise<void> {
   const { rows } = await pool.query<TableRow>(
     `SELECT table_name
        FROM information_schema.tables
-      WHERE table_schema = current_schema()
+      WHERE table_schema = $1
         AND table_type = 'BASE TABLE'
       ORDER BY table_name`,
+    [expectedSchema],
   )
 
   const tables = rows
@@ -183,14 +185,14 @@ export async function resetTestDatabase(): Promise<void> {
     // tests that all "pass" against nothing.
     throw new Error(
       `resetTestDatabase() found no application tables in ` +
-        `current_schema() (${[...MIGRATION_JOURNAL_TABLES].join(', ')} excluded). ` +
+        `${expectedSchema} (${[...MIGRATION_JOURNAL_TABLES].join(', ')} excluded). ` +
         'The scratch schema was never migrated — run the suite through ' +
         '`pnpm test` so tests/setup/global-db.ts can create it. Refusing to ' +
         'report a successful reset against an empty schema.',
     )
   }
 
-  const list = tables.map(quoteIdentifier).join(', ')
+  const list = tables.map((table) => `${quotedExpectedSchema}.${quoteIdentifier(table)}`).join(', ')
   await pool.query(`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`)
 }
 

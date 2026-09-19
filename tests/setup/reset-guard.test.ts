@@ -108,7 +108,7 @@ describe('resetTestDatabase() schema guard', () => {
     }
   })
 
-  it('leaves the fixture intact — it refuses before truncating, not after', async () => {
+  it('leaves the fixture data intact — it refuses before truncating, not after', async () => {
     // If the guard had let the TRUNCATE through, the developer fixture would be
     // empty. Count through a pool that resolves to public deliberately.
     const pool = new Pool({ connectionString: fallthroughUrl() })
@@ -119,6 +119,41 @@ describe('resetTestDatabase() schema guard', () => {
         WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`,
     )
     expect(Number(rows[0]?.n)).toBeGreaterThan(0)
+
+    // `beta.invite_only` is reference data from scripts/db-seed.mjs. Its row
+    // must survive the refused reset; table existence alone would not detect a
+    // TRUNCATE because it preserves the table definition.
+    const { rows: beforeRows } = await pool.query<{ n: string }>(
+      `SELECT count(*)::text AS n
+         FROM public.feature_flag
+        WHERE key = 'beta.invite_only'`,
+    )
+    const featureFlagRowsBefore = Number(beforeRows[0]?.n)
+    expect(featureFlagRowsBefore).toBeGreaterThan(0)
+
+    const realUrl = process.env.DATABASE_URL
+    try {
+      process.env.DATABASE_URL = fallthroughUrl()
+      const { closeTestPool } = await import('@/tests/helpers/db')
+      await closeTestPool()
+
+      await expect(resetTestDatabase()).rejects.toThrow(
+        /refuses to truncate: current_schema\(\) is public/,
+      )
+
+      await closeTestPool()
+    } finally {
+      process.env.DATABASE_URL = realUrl
+      const { closeTestPool } = await import('@/tests/helpers/db')
+      await closeTestPool()
+    }
+
+    const { rows: afterRows } = await pool.query<{ n: string }>(
+      `SELECT count(*)::text AS n
+         FROM public.feature_flag
+        WHERE key = 'beta.invite_only'`,
+    )
+    expect(Number(afterRows[0]?.n)).toBe(featureFlagRowsBefore)
   })
 
   it('still accepts the real scratch schema — the guard is not vacuous', async () => {
