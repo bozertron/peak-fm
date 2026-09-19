@@ -1,8 +1,24 @@
 # [PEAK-210] Buy: category browse and deep filtering
 
-- Priority: P0 · Area: Buy · Status: OPEN
-- Dependencies: PEAK-200, PEAK-202, PEAK-220 (needs real listings to browse)
-- Risk: performance / UX
+|  |  |
+|---|---|
+| **Wave** | **2** |
+| **Status** | OPEN |
+| **Area** | Buy |
+| **Depends on** | PEAK-213, PEAK-220 *(needs real supply)* |
+| **Blocks** | PEAK-281 |
+| **Blocked by decision** | — |
+| **Files you own** | `app/(app)/buy/**`, `lib/queries/listings.ts` |
+| **Risk** | performance / UX |
+
+> **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
+> `lib/db/schema/index.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`,
+> `app/layout.tsx`, `package.json` and `drizzle.config.ts` belong to the
+> sequential registrar.
+> `components/composer/**` becomes registrar-owned **once PEAK-222 lands**, and
+> `components/thread/registry.ts` **once PEAK-300 lands** — until then they
+> belong to the ticket building them. Surface-specific CSS goes in your
+> surface's own stylesheet, never in `globals.css`.
 
 ## Intent
 "Shows a sampling of what's for sale in each category — **however**, it's got
@@ -49,3 +65,26 @@ not rewrite it.**
 
 ## Rollback
 Feature-flagged behind `surface.buy`. Turn it off in the admin dashboard.
+
+---
+
+## Definition of done
+
+Every one of these, with **actual output pasted** — rule 6 of
+`../doctrine/PROHIBITED.txt` does not accept an assertion:
+
+```bash
+pnpm lint         # once PEAK-207 lands
+pnpm typecheck
+pnpm build
+pnpm test         # once PEAK-206 lands
+pnpm db:check     # all tables verified
+pnpm check:links  # no unowned dead links
+```
+
+Plus this ticket's own **Verification evidence** above.
+
+If your ticket creates a route, **delete its line from `KNOWN_MISSING` in
+`scripts/check-links.mjs` in the same commit.** If it links to a route that
+does not exist yet, add the line with your ticket number. That list may only
+shrink.

@@ -1,8 +1,24 @@
 # [PEAK-280] Find: the [Find] button and permanent capture
 
-- Priority: P1 · Area: Find · Status: OPEN
-- Dependencies: PEAK-200, PEAK-202
-- Risk: data integrity
+|  |  |
+|---|---|
+| **Wave** | **2** (280a) · **3** (280b placement) |
+| **Status** | OPEN |
+| **Area** | Find |
+| **Depends on** | PEAK-200, PEAK-202 |
+| **Blocks** | PEAK-281, PEAK-290 |
+| **Blocked by decision** | — |
+| **Files you own** | `components/find/**`, `app/(app)/find/**` |
+| **Risk** | data integrity |
+
+> **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
+> `lib/db/schema/index.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`,
+> `app/layout.tsx`, `package.json` and `drizzle.config.ts` belong to the
+> sequential registrar.
+> `components/composer/**` becomes registrar-owned **once PEAK-222 lands**, and
+> `components/thread/registry.ts` **once PEAK-300 lands** — until then they
+> belong to the ticket building them. Surface-specific CSS goes in your
+> surface's own stylesheet, never in `globals.css`.
 
 ## Intent
 "Wherever applicable, there's a [Find] button. It looks at the meta-data of
@@ -57,3 +73,26 @@ metadata for each origin surface. Paste the rows.
 
 ## Rollback
 Behind `surface.find`.
+
+---
+
+## Definition of done
+
+Every one of these, with **actual output pasted** — rule 6 of
+`../doctrine/PROHIBITED.txt` does not accept an assertion:
+
+```bash
+pnpm lint         # once PEAK-207 lands
+pnpm typecheck
+pnpm build
+pnpm test         # once PEAK-206 lands
+pnpm db:check     # all tables verified
+pnpm check:links  # no unowned dead links
+```
+
+Plus this ticket's own **Verification evidence** above.
+
+If your ticket creates a route, **delete its line from `KNOWN_MISSING` in
+`scripts/check-links.mjs` in the same commit.** If it links to a route that
+does not exist yet, add the line with your ticket number. That list may only
+shrink.

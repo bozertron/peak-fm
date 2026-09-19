@@ -1,8 +1,24 @@
 # [PEAK-205] Route inventory and the dead-link guard
 
-- Priority: P0 · Area: Platform · Status: **PARTLY DONE — guard shipped, routes open**
-- Dependencies: none · Blocks: nothing, but every surface ticket closes part of it
-- Risk: UX
+|  |  |
+|---|---|
+| **Wave** | — |
+| **Status** | **PARTLY DONE** — guard shipped, 18 routes still open |
+| **Area** | Platform |
+| **Depends on** | none |
+| **Blocks** | nothing; every surface ticket closes part of it |
+| **Blocked by decision** | — |
+| **Files you own** | `scripts/check-links.mjs`, `app/not-found.tsx` |
+| **Risk** | UX |
+
+> **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
+> `lib/db/schema/index.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`,
+> `app/layout.tsx`, `package.json` and `drizzle.config.ts` belong to the
+> sequential registrar.
+> `components/composer/**` becomes registrar-owned **once PEAK-222 lands**, and
+> `components/thread/registry.ts` **once PEAK-300 lands** — until then they
+> belong to the ticket building them. Surface-specific CSS goes in your
+> surface's own stylesheet, never in `globals.css`.
 
 ## The defect this came from
 

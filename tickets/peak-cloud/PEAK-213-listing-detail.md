@@ -1,10 +1,24 @@
 # [PEAK-213] Listing detail page
 
-- Priority: P0 · Area: Buy · Status: OPEN
-- Dependencies: PEAK-220 (needs listings to exist)
-- Risk: UX
-- **Created by the pressure test.** `components/surface.tsx` links every card to
-  `/listing/:id` and that route did not exist in any ticket.
+|  |  |
+|---|---|
+| **Wave** | **2** |
+| **Status** | OPEN |
+| **Area** | Buy |
+| **Depends on** | PEAK-220 |
+| **Blocks** | PEAK-210 |
+| **Blocked by decision** | — |
+| **Files you own** | `app/(app)/listing/**` |
+| **Risk** | UX / authorization |
+
+> **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
+> `lib/db/schema/index.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`,
+> `app/layout.tsx`, `package.json` and `drizzle.config.ts` belong to the
+> sequential registrar.
+> `components/composer/**` becomes registrar-owned **once PEAK-222 lands**, and
+> `components/thread/registry.ts` **once PEAK-300 lands** — until then they
+> belong to the ticket building them. Surface-specific CSS goes in your
+> surface's own stylesheet, never in `globals.css`.
 
 ## Scope
 `app/(app)/listing/[id]/page.tsx` — the destination of every listing card on
@@ -39,3 +53,26 @@ removed.
 
 ## Rollback
 Behind the owning surface's flag.
+
+---
+
+## Definition of done
+
+Every one of these, with **actual output pasted** — rule 6 of
+`../doctrine/PROHIBITED.txt` does not accept an assertion:
+
+```bash
+pnpm lint         # once PEAK-207 lands
+pnpm typecheck
+pnpm build
+pnpm test         # once PEAK-206 lands
+pnpm db:check     # all tables verified
+pnpm check:links  # no unowned dead links
+```
+
+Plus this ticket's own **Verification evidence** above.
+
+If your ticket creates a route, **delete its line from `KNOWN_MISSING` in
+`scripts/check-links.mjs` in the same commit.** If it links to a route that
+does not exist yet, add the line with your ticket number. That list may only
+shrink.

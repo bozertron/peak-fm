@@ -27,10 +27,27 @@ Supersedes the previous `AREA-1xx` backlog in full; see `../HISTORY.md`.
 | PEAK-300–309 | Communicate |
 | PEAK-310–319 | Account |
 
-## Status
+## Where to look
 
-`STATUS.md` is the single board. Foundation tickets PEAK-200 to PEAK-204 are
-**done and verified**; everything else is open.
+| File | What it is |
+|---|---|
+| `INDEX.md` | every ticket, its wave, and what it waits on — **start here** |
+| `STATUS.md` | the wave plan, and the pressure-test reasoning behind its order |
+| `OPEN-DECISIONS.md` | the five things you must **not** decide yourself |
+
+PEAK-200 to PEAK-204 are **done and verified**. PEAK-205 is partly done. The
+rest are open, grouped into four waves.
+
+## Ticket headers are a contract
+
+Every ticket opens with a table giving its wave, dependencies, what it blocks,
+any decision blocking it, and — most importantly — **the files it owns**.
+
+That last row is the anti-clobber contract. If two tickets claim the same file,
+that is a bug in the backlog: raise it rather than working around it. The
+ownership map was derived by mapping every ticket to the files it must touch,
+which is how the composer and thread-registry collisions were found before an
+agent hit them.
 
 ## Operating rules
 

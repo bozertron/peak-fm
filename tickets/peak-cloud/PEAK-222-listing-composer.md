@@ -1,11 +1,28 @@
 # [PEAK-222] Shared listing composer
 
-- Priority: **P0 — unblocks four tickets** · Area: Sell · Status: OPEN
-- Dependencies: PEAK-209 (storage) · Blocks: PEAK-220, PEAK-221, PEAK-260, PEAK-270
-- Risk: architecture / contention
-- **Created by the pressure test.** Four tickets independently said "reuse the
-  presentation builder". Without this ticket they would all edit the same files
-  in parallel.
+|  |  |
+|---|---|
+| **Wave** | **1** |
+| **Status** | OPEN |
+| **Area** | Sell |
+| **Depends on** | PEAK-209 |
+| **Blocks** | **PEAK-220, PEAK-221, PEAK-260, PEAK-270** |
+| **Blocked by decision** | — |
+| **Files you own** | `components/composer/**` |
+| **Risk** | architecture / contention |
+
+> **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
+> `lib/db/schema/index.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`,
+> `app/layout.tsx`, `package.json` and `drizzle.config.ts` belong to the
+> sequential registrar.
+> `components/composer/**` becomes registrar-owned **once PEAK-222 lands**, and
+> `components/thread/registry.ts` **once PEAK-300 lands** — until then they
+> belong to the ticket building them. Surface-specific CSS goes in your
+> surface's own stylesheet, never in `globals.css`.
+
+> **CRITICAL PATH.** Four tickets cannot start until this lands. Built late,
+> or in parallel with its consumers, it re-creates the exact collision it
+> exists to remove.
 
 ## The problem it solves
 
@@ -63,3 +80,26 @@ mobile capture with the `listing_media` row pasted.
 
 ## Rollback
 Behind the consuming surface's flag; drafts are private.
+
+---
+
+## Definition of done
+
+Every one of these, with **actual output pasted** — rule 6 of
+`../doctrine/PROHIBITED.txt` does not accept an assertion:
+
+```bash
+pnpm lint         # once PEAK-207 lands
+pnpm typecheck
+pnpm build
+pnpm test         # once PEAK-206 lands
+pnpm db:check     # all tables verified
+pnpm check:links  # no unowned dead links
+```
+
+Plus this ticket's own **Verification evidence** above.
+
+If your ticket creates a route, **delete its line from `KNOWN_MISSING` in
+`scripts/check-links.mjs` in the same commit.** If it links to a route that
+does not exist yet, add the line with your ticket number. That list may only
+shrink.

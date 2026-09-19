@@ -1,9 +1,24 @@
 # [PEAK-201] Migration runner and schema verification
 
-- Priority: P0 · Area: Foundation · Status: **DONE — verified**
-- Dependencies: PEAK-200
-- Risk: operations / data
-- Closes: the AREA-109 root cause
+|  |  |
+|---|---|
+| **Wave** | — |
+| **Status** | **DONE — verified** |
+| **Area** | Foundation |
+| **Depends on** | PEAK-200 |
+| **Blocks** | PEAK-250 |
+| **Blocked by decision** | — |
+| **Files you own** | `scripts/db-migrate.mjs`, `drizzle/**` |
+| **Risk** | operations / data |
+
+> **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
+> `lib/db/schema/index.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`,
+> `app/layout.tsx`, `package.json` and `drizzle.config.ts` belong to the
+> sequential registrar.
+> `components/composer/**` becomes registrar-owned **once PEAK-222 lands**, and
+> `components/thread/registry.ts` **once PEAK-300 lands** — until then they
+> belong to the ticket building them. Surface-specific CSS goes in your
+> surface's own stylesheet, never in `globals.css`.
 
 ## Intent
 AREA-109 traced a production sign-in 500 to the fact that **no deploy step ever

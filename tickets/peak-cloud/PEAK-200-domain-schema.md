@@ -1,8 +1,24 @@
 # [PEAK-200] Domain schema
 
-- Priority: P0 · Area: Foundation · Status: **DONE — verified**
-- Dependencies: none
-- Risk: data
+|  |  |
+|---|---|
+| **Wave** | — |
+| **Status** | **DONE — verified** |
+| **Area** | Foundation |
+| **Depends on** | none |
+| **Blocks** | everything |
+| **Blocked by decision** | — |
+| **Files you own** | `lib/db/schema/**` |
+| **Risk** | data |
+
+> **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
+> `lib/db/schema/index.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`,
+> `app/layout.tsx`, `package.json` and `drizzle.config.ts` belong to the
+> sequential registrar.
+> `components/composer/**` becomes registrar-owned **once PEAK-222 lands**, and
+> `components/thread/registry.ts` **once PEAK-300 lands** — until then they
+> belong to the ticket building them. Surface-specific CSS goes in your
+> surface's own stylesheet, never in `globals.css`.
 
 ## Intent
 Give every surface in `docs/PEAK-PRODUCT-SPEC.md` a real table to read and write,

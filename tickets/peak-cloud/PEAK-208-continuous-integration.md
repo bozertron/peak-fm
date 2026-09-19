@@ -1,9 +1,24 @@
 # [PEAK-208] Continuous integration
 
-- Priority: **P0 — blocks the wave** · Area: Platform · Status: OPEN
-- Dependencies: PEAK-206, PEAK-207
-- Risk: operations
-- **Split out of PEAK-250 deliberately: CI is NOT blocked by D3.**
+|  |  |
+|---|---|
+| **Wave** | **0** |
+| **Status** | OPEN |
+| **Area** | Platform |
+| **Depends on** | PEAK-206, PEAK-207 |
+| **Blocks** | **every ticket** (regression safety) |
+| **Blocked by decision** | — |
+| **Files you own** | `.github/workflows/**` |
+| **Risk** | operations |
+
+> **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
+> `lib/db/schema/index.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`,
+> `app/layout.tsx`, `package.json` and `drizzle.config.ts` belong to the
+> sequential registrar.
+> `components/composer/**` becomes registrar-owned **once PEAK-222 lands**, and
+> `components/thread/registry.ts` **once PEAK-300 lands** — until then they
+> belong to the ticket building them. Surface-specific CSS goes in your
+> surface's own stylesheet, never in `globals.css`.
 
 ## Why this is separate from PEAK-250
 
@@ -43,3 +58,26 @@ same standard PEAK-250 is held to.
 
 ## Rollback
 Delete the workflow. It gates nothing else.
+
+---
+
+## Definition of done
+
+Every one of these, with **actual output pasted** — rule 6 of
+`../doctrine/PROHIBITED.txt` does not accept an assertion:
+
+```bash
+pnpm lint         # once PEAK-207 lands
+pnpm typecheck
+pnpm build
+pnpm test         # once PEAK-206 lands
+pnpm db:check     # all tables verified
+pnpm check:links  # no unowned dead links
+```
+
+Plus this ticket's own **Verification evidence** above.
+
+If your ticket creates a route, **delete its line from `KNOWN_MISSING` in
+`scripts/check-links.mjs` in the same commit.** If it links to a route that
+does not exist yet, add the line with your ticket number. That list may only
+shrink.

@@ -1,8 +1,24 @@
 # [PEAK-206] Test harness
 
-- Priority: **P0 — blocks the wave** · Area: Platform · Status: OPEN
-- Dependencies: none
-- Risk: quality at scale
+|  |  |
+|---|---|
+| **Wave** | **0** |
+| **Status** | OPEN |
+| **Area** | Platform |
+| **Depends on** | none |
+| **Blocks** | **every ticket that must write a test** |
+| **Blocked by decision** | — |
+| **Files you own** | `tests/**`, `vitest.config.ts` or equivalent |
+| **Risk** | quality at scale |
+
+> **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
+> `lib/db/schema/index.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`,
+> `app/layout.tsx`, `package.json` and `drizzle.config.ts` belong to the
+> sequential registrar.
+> `components/composer/**` becomes registrar-owned **once PEAK-222 lands**, and
+> `components/thread/registry.ts` **once PEAK-300 lands** — until then they
+> belong to the ticket building them. Surface-specific CSS goes in your
+> surface's own stylesheet, never in `globals.css`.
 
 ## Why this is first
 
@@ -48,3 +64,26 @@ proving no scratch schema survives.
 None needed — additive. But **nothing downstream should be merged before this
 lands**, because those tickets cannot satisfy their own acceptance criteria
 without it.
+
+---
+
+## Definition of done
+
+Every one of these, with **actual output pasted** — rule 6 of
+`../doctrine/PROHIBITED.txt` does not accept an assertion:
+
+```bash
+pnpm lint         # once PEAK-207 lands
+pnpm typecheck
+pnpm build
+pnpm test         # once PEAK-206 lands
+pnpm db:check     # all tables verified
+pnpm check:links  # no unowned dead links
+```
+
+Plus this ticket's own **Verification evidence** above.
+
+If your ticket creates a route, **delete its line from `KNOWN_MISSING` in
+`scripts/check-links.mjs` in the same commit.** If it links to a route that
+does not exist yet, add the line with your ticket number. That list may only
+shrink.
