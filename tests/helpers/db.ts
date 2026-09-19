@@ -120,6 +120,51 @@ type TableRow = { table_name: string }
 export async function resetTestDatabase(): Promise<void> {
   const pool = testPool()
 
+  // Which schema are we actually about to empty?
+  //
+  // The pool is opened with `search_path = <scratch>, public`, and
+  // `current_schema()` resolves to the first EXISTING entry. So if the scratch
+  // schema is absent — dropped by a crashed teardown, or never created because
+  // the file was run outside `pnpm test` — `current_schema()` silently becomes
+  // `public`: the developer's working database.
+  //
+  // The `tables.length === 0` check below does NOT catch that. `public` holds
+  // the full application fixture, so the list comes back populated and the
+  // TRUNCATE proceeds against real data. Measured on a dev database:
+  // `SET search_path = peak_test_does_not_exist, public` resolves
+  // `current_schema()` to `public` and finds 38 application tables to target.
+  //
+  // So the schema is verified by NAME against the one globalSetup exported,
+  // before anything is discovered or truncated.
+  const expectedSchema = process.env.PEAK_TEST_SCHEMA
+  if (!expectedSchema) {
+    throw new Error(
+      'PEAK_TEST_SCHEMA is not set, so resetTestDatabase() cannot confirm ' +
+        'which schema it would empty. Run the suite through `pnpm test` so ' +
+        'tests/setup/global-db.ts can create the scratch schema and export ' +
+        'its name. Refusing to truncate an unverified schema.',
+    )
+  }
+
+  const { rows: schemaRows } = await pool.query<{ schema: string | null }>(
+    'SELECT current_schema() AS schema',
+  )
+  const actualSchema = schemaRows[0]?.schema
+
+  if (actualSchema !== expectedSchema) {
+    throw new Error(
+      `resetTestDatabase() refuses to truncate: current_schema() is ` +
+        `${actualSchema ?? 'NULL'}, but the scratch schema is ${expectedSchema}. ` +
+        'The pool resolves `search_path = <scratch>, public`, so this means the ' +
+        'scratch schema is missing and the connection has fallen through to ' +
+        (actualSchema === 'public'
+          ? 'the developer working database. Truncating it would destroy real data. '
+          : 'another schema. ') +
+        'Run the suite through `pnpm test` so tests/setup/global-db.ts can ' +
+        'recreate and migrate the scratch schema.',
+    )
+  }
+
   const { rows } = await pool.query<TableRow>(
     `SELECT table_name
        FROM information_schema.tables
