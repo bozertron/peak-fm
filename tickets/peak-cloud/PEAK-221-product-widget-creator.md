@@ -10,6 +10,12 @@ Presentation." The widget renders at the **top level** of the listing as
 *service overview + pricing + booking tool*, so someone viewing a local
 individual's house-cleaning service can book it there and then.
 
+## Depends on the shared composer
+
+The widget is a composer section supplied by this ticket, rendered by
+**PEAK-222**'s composer. Build the section and the booking tool in this
+ticket's own files.
+
 ## Scope
 - LLM drafts `service_widget.headline` and `overview` from what the seller has
   already entered, plus suggested `service_pricing_tier` rows.

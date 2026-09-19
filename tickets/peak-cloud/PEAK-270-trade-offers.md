@@ -9,7 +9,8 @@
 addition is **Bid as Sale**.
 
 ## Scope
-- Create a trade listing, reusing the presentation builder. `bidAsSale` is set
+- Create a trade listing by configuring the shared composer (**PEAK-222**) for
+  `kind: 'trade'`; do not fork it. `bidAsSale` is set
   **once at creation** and is **not editable afterwards** — enforce in the update
   path, not just by hiding the control.
 - With Bid as Sale on, a bidder may offer **any item, any amount of money, or

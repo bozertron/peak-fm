@@ -9,6 +9,12 @@
 A marketplace with strangers transacting needs a report path before external
 testers arrive, not after the first incident.
 
+## Placement is a registrar pass
+
+Like PEAK-280, this control belongs on six surfaces owned by other agents.
+Build the mechanism in files this ticket owns, then place it in **one registrar
+commit**. Six agents each adding a report button is a guaranteed clobber.
+
 ## Scope
 A report control on listings, messages, users, plans, finds and bulletin posts,
 writing `moderation_report`. Structured reasons plus free text. The reporter

@@ -1,0 +1,44 @@
+/* ===========================================================================
+   Admin — the beta operations dashboard
+
+   Owned by the ticket(s) that build this surface. `app/globals.css` holds the
+   design tokens and the SHARED primitives (buttons, notices, status chips,
+   rows, tables, forms) and belongs to the sequential registrar — put
+   surface-specific rules here instead, so parallel agents do not contend on
+   one stylesheet.
+
+   Imported by: app/admin/page.tsx
+   =========================================================================== */
+
+/* --- Admin --------------------------------------------------------------- */
+
+.admin-page{min-height:100vh}
+.admin-header{height:76px;padding:0 clamp(18px,4vw,62px);background:var(--snow);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px;position:sticky;top:0;z-index:20}
+.admin-header .wordmark{font-size:26px}
+.admin-header>span{color:var(--slate);font-size:12px;border-left:1px solid var(--line);padding-left:18px}
+.admin-link{margin-left:auto;text-decoration:none;font-size:12px}
+.admin-content{max-width:1050px;margin:auto;padding:56px 24px 96px}
+.admin-wide{max-width:1320px}
+.admin-content h1{font:400 clamp(32px,4vw,46px) var(--font-sans);letter-spacing:-.04em}
+.admin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:38px 0}
+.admin-grid-6{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.admin-grid>div{background:var(--snow);border:1px solid var(--line);border-radius:9px;padding:20px}
+.admin-grid strong,.admin-grid span{display:block}
+.admin-grid strong{font:400 32px var(--font-sans);color:var(--forest);letter-spacing:-.03em}
+.admin-grid span{margin-top:6px;color:var(--slate);font-size:11px}
+.stat-sub{display:block;margin-top:4px;color:var(--wood);font-size:11px}
+.admin-section{margin-bottom:22px}
+.inline-control{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.inline-control select{border:1px solid var(--line);background:var(--cream);border-radius:6px;padding:6px 9px;font-size:12px}
+.toggle{border:1px solid var(--line);border-radius:20px;padding:5px 15px;font-size:11px;font-weight:700;min-width:64px}
+.toggle-on{background:var(--forest);color:#fff;border-color:var(--forest)}
+.toggle-off{background:transparent;color:var(--slate)}
+.invite-form{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:18px}
+.invite-form .field{margin-bottom:0}
+
+@media(max-width:760px){
+  .admin-grid{grid-template-columns:1fr}
+}
+@media(prefers-color-scheme:dark){
+  .toggle-off{border-color:#4a564c}
+}

@@ -8,7 +8,9 @@
 Option 1 of three. The direct route, for an owner who already knows their price.
 
 ## Scope
-Reuse the presentation builder from PEAK-220 with rental fields: rate and
+Configure the shared composer (**PEAK-222**) for `kind: 'rental'`. Do not fork
+it. Rental-specific fields are supplied as config from this ticket's own
+files: rate and
 `pricingUnit` (day/week/month), deposit, availability calendar, conditions,
 minimum and maximum hire period. Publishes a `listing` with `kind = 'rental'`.
 

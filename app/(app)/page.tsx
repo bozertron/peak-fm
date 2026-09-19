@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import './home.css'
 import { getCurrentMarket, getFeatureFlags, countRows } from '@/lib/queries/market'
 import { countListingsByKind } from '@/lib/queries/listings'
 

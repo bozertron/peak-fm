@@ -15,11 +15,17 @@ Read this document in full before your first tool call. It is the contract.
 
 - The foundation is **built, running and verified**. You are extending working
   code, not starting a project.
-- **Five tickets unblock everything else.** They are named in §5.
-- **Six decisions are not yours to make.** They are in
-  `tickets/peak-cloud/OPEN-DECISIONS.md`. Reaching one means halting and asking.
-- **D1 gates the first governed wave** and is unresolved. Resolve it with the
-  user before deploying agents under the AREA-107 protocol.
+- **This backlog has been pressure-tested against a parallel wave.** Read §5
+  before scheduling anything — the wave order exists to prevent collisions that
+  were measured, not imagined.
+- **Wave 0 is three small tickets and nothing else may merge before them**:
+  there is no test runner, no linter and no CI in this repository today.
+- **Wave 1 builds two extension points** (PEAK-222 composer, PEAK-300 thread
+  registry) that nine downstream tickets consume. Build them late and you
+  re-create the collision they exist to remove.
+- **Five decisions are not yours to make** (`OPEN-DECISIONS.md`). Reaching one
+  means halting and asking. **D1 gates the first governed wave** and is still
+  unresolved.
 - Nothing may be declared done without the real command run and its **actual
   output pasted**.
 
@@ -150,53 +156,94 @@ invite code matching `/^[A-Z2-9]{8}$/`; both actions in the audit log.
 One console 404 remains: `/_vercel/insights/script.js`, expected off Vercel.
 See **D3**.
 
+### 3.6 Guards you inherit
+
+Four commands stand between you and the two failure classes this project has
+actually shipped:
+
+| Command | Catches |
+|---|---|
+| `pnpm db:check` | a schema that was never created *(the AREA-109 500)* |
+| `pnpm check:links` | a link in the UI that 404s |
+| `pnpm smoke` | the app not actually working in a browser |
+| `pnpm typecheck && pnpm build` | the ordinary things |
+
+`pnpm check:links` is new, and it exists because **every primary call-to-action
+on every surface was pointing at a route no ticket had built**. Eighteen dead
+links, and all three other gates passed. Its `KNOWN_MISSING` list maps each
+gap to its owning ticket and **may only shrink** — when your ticket creates a
+route, delete its line in the same commit.
+
 ---
 
 ## 4. Honest gaps — do not mistake these for working
 
 Stated so nothing looks more finished than it is:
 
-1. **No listing can be created through the UI** (PEAK-220). Every surface
-   therefore shows an honest empty state. That is correct behaviour, not a bug.
-2. **`beta.invite_only` is seeded ON but enforced NOWHERE** (PEAK-240). Anyone
+1. **18 call-to-action links still 404.** Every one is owned by a ticket and
+   listed in `KNOWN_MISSING` in `scripts/check-links.mjs`; `app/not-found.tsx`
+   catches them meanwhile. This is the largest visible gap and it closes as the
+   surface tickets land.
+2. **No listing can be created through the UI** (PEAK-222 → PEAK-220). Every
+   surface therefore shows an honest empty state. Correct behaviour, not a bug.
+3. **`beta.invite_only` is seeded ON but enforced NOWHERE** (PEAK-240). Anyone
    reaching the URL can register today.
-3. **`feature_flag.rollout` exists as a column; only the boolean is evaluated**
+4. **`feature_flag.rollout` exists as a column; only the boolean is evaluated**
    (PEAK-241).
-4. **`beta_feedback` and `moderation_report` are readable and resolvable in
+5. **`beta_feedback` and `moderation_report` are readable and resolvable in
    admin, but nothing creates rows** (PEAK-242, PEAK-243).
+6. **No test runner, no linter, no CI.** Wave 0 exists to fix exactly this.
 
 ---
 
 ## 5. Your work, in order
 
-Full tickets in `tickets/peak-cloud/`. Board: `STATUS.md`.
+Full tickets in `tickets/peak-cloud/`. Board: `STATUS.md`, which carries the
+reasoning behind this ordering.
 
-### Wave 1 — these unblock everything else
+**This order is not a preference.** It was derived by mapping every ticket to
+the files it must touch and finding the collisions. Scheduling around it puts
+two agents in one file.
 
-| Ticket | Why it is first |
+### Wave 0 — foundation. Nothing else merges first.
+
+| Ticket | Why |
 |---|---|
-| **PEAK-300** Threads | Blocks 211, 232, 270, 290. Six tickets wait on it |
-| **PEAK-220** Presentation builder | Nothing can be bought until something can be sold |
-| **PEAK-230** Provider seam | Blocks all commerce. Interface only — no provider yet |
-| **PEAK-240** Invite redemption | Needed before the first external tester |
-| **PEAK-250** Deploy pipeline | Closes AREA-109 *(blocked by D3)* |
+| **PEAK-206** Test harness | There is no test runner. Nineteen tickets demand tests |
+| **PEAK-207** Lint and format | No linter, no formatter. Twenty agents → twenty styles |
+| **PEAK-208** CI | Not blocked by D3. Without it, humans are the regression suite |
 
-PEAK-300 and PEAK-220 are the two that matter most. Everything else is
-downstream of a thread that works and a listing that exists.
+Small, independent, touch nothing the surface tickets touch. Run all three in
+parallel, immediately.
 
-### Wave 2 — the surfaces
-PEAK-210 (Buy filters — **the differentiator, not the browse**), PEAK-221
-(Widget Creator; build the manual path and booking tool first, they are not
-blocked), PEAK-231 (Stripe, blocked by D4), PEAK-260/261 (Rent; **261 Explore
-ROI is the most distinctive thing in the product**), PEAK-270 (Trade + Bid as
-Sale), PEAK-280 (Find capture), PEAK-242 and PEAK-243 (cheap, high value for a
-beta).
+### Wave 1 — extension points. One agent each, no exceptions.
+
+| Ticket | Consumed by |
+|---|---|
+| **PEAK-209** Media storage | PEAK-222 |
+| **PEAK-222** Shared listing composer | PEAK-220, 221, 260, 270 |
+| **PEAK-300** Threads + message renderer registry | PEAK-211, 232, 270, 290 |
+| **PEAK-230** Payment provider seam | PEAK-231, 232, 262 |
+| **PEAK-240** Invite redemption | needed before the first external tester |
+
+PEAK-222 and PEAK-300 are the critical two. Four tickets independently said
+"reuse the presentation builder", and five need to render a message kind into
+the thread. Each of those is built **once**, by **one** agent, exposing a
+config object or a registry that the others plug into from their own files.
+
+### Wave 2 — surfaces, parallel-safe once Wave 1 lands
+
+PEAK-220 Sell · PEAK-213 Listing detail · PEAK-210 Buy filters · PEAK-261
+Explore ROI · PEAK-260 Build Rental · PEAK-270 Trade · PEAK-280a Find
+mechanism · PEAK-291 Community · PEAK-242 Feedback widget · PEAK-221 Widget
+Creator *(D6 for the LLM path only)* · PEAK-231 Stripe *(D4)*.
 
 ### Wave 3
-PEAK-211, PEAK-232, PEAK-212, PEAK-262, PEAK-281, PEAK-290, PEAK-291,
-PEAK-310, PEAK-241.
 
----
+PEAK-211, 232, 212, 262, 281, 290, 310, 241, 250 — plus the two **registrar
+placement passes**: PEAK-280b puts the Find button into five surfaces, and
+PEAK-243 puts the report control into six. **One commit each, one agent,
+after those surfaces are stable.** Never distribute a placement pass.
 
 ## 6. Decisions that are NOT yours
 
@@ -255,18 +302,33 @@ now decomposed specifically to fix that.
 
 | Owner | Files |
 |---|---|
-| **Sequential registrar — never a parallel builder** | `app/globals.css`, `lib/db/schema/index.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`, `package.json`, `drizzle.config.ts` |
-| Safe for one builder each | one `lib/db/schema/<area>.ts`, one `lib/queries/<area>.ts`, one `app/(app)/<surface>/` |
+| **Registrar only — never a parallel builder** | `app/globals.css`, `lib/db/schema/index.ts`, `lib/surfaces.ts`, `components/peak-header.tsx`, `app/(app)/layout.tsx`, `app/layout.tsx`, `package.json`, `drizzle.config.ts`, `components/thread/registry.ts`, `components/composer/**` *(after PEAK-222)* |
+| One ticket each | `app/(app)/<surface>/**` **including its own `<surface>.css`**, one `lib/queries/<area>.ts`, one `lib/db/schema/<area>.ts`, one `components/thread/kinds/<kind>.tsx` |
 
 Two agents must never hold the same file. Schema and query files are split by
 area precisely to make this possible.
 
+**Styling is where this nearly broke.** `app/globals.css` was contended by 16
+tickets — by far the worst serialization point in the plan. It has been
+decomposed: `globals.css` now holds only tokens and shared primitives
+(buttons, notices, status chips, rows, tables, forms) and is registrar-owned,
+while each surface has its own stylesheet next to its page, imported by it and
+owned by its ticket.
+
+So: **surface-specific CSS goes in your surface's stylesheet.** Reach for
+`globals.css` only when you are adding a primitive that genuinely belongs to
+every surface, and then ask the registrar. Do not inline styles to avoid the
+question.
+
 ### 7.4 Definition of done
 
 ```bash
+pnpm lint         # once PEAK-207 lands
 pnpm typecheck    # must be clean
 pnpm build        # must be clean
+pnpm test         # once PEAK-206 lands
 pnpm db:check     # must report all tables verified
+pnpm check:links  # no unowned dead links
 ```
 
 Plus, for the ticket's own behaviour, real evidence: a browser test, a two-
@@ -301,7 +363,7 @@ as intended, not a bug.
 
 ---
 
-## 9. The five things most likely to go wrong
+## 9. The six things most likely to go wrong
 
 1. **Reaching for a dependency that used to be here.** Tailwind, shadcn,
    lucide-react, leaflet and clsx were all removed on 2026-09-19 because
@@ -316,6 +378,10 @@ as intended, not a bug.
 5. **Deciding a D-item because it was blocking.** Halt and ask. Every one of
    them has consequences outside the code — regulatory posture, cost, or a
    product commitment the user has to own.
+6. **Linking to a route you have not built.** This already happened once, at
+   scale: eighteen dead call-to-action links that `typecheck`, `build` and
+   `db:check` all waved through. If you link it, either build it or put it in
+   `KNOWN_MISSING` with your ticket number. Run `pnpm check:links`.
 
 ---
 

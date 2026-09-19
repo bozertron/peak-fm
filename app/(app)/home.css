@@ -1,0 +1,39 @@
+/* ===========================================================================
+   Landing pitch — the page that answers "why another app?"
+
+   Owned by the ticket(s) that build this surface. `app/globals.css` holds the
+   design tokens and the SHARED primitives (buttons, notices, status chips,
+   rows, tables, forms) and belongs to the sequential registrar — put
+   surface-specific rules here instead, so parallel agents do not contend on
+   one stylesheet.
+
+   Imported by: app/(app)/page.tsx
+   =========================================================================== */
+
+/* --- Landing pitch ------------------------------------------------------- */
+
+.pitch-hero{max-width:1280px;margin:0 auto;padding:clamp(48px,7vw,96px) clamp(18px,4vw,64px) clamp(32px,4vw,56px)}
+.pitch-hero h1{font:400 clamp(40px,6.4vw,82px)/1.02 var(--font-sans);letter-spacing:-.055em}
+.pitch-hero h1 em{font-style:italic;color:var(--forest)}
+.pitch-lede{color:var(--slate);font-size:clamp(14px,1.5vw,17px);line-height:1.62;margin:26px 0 0;max-width:64ch}
+.pitch-actions{display:flex;gap:12px;margin:32px 0 0;flex-wrap:wrap}
+.pitch-stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:48px}
+.pitch-stat{background:var(--snow);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+.pitch-stat strong{display:block;font:400 30px var(--font-sans);color:var(--forest);letter-spacing:-.03em}
+.pitch-stat span{display:block;color:var(--slate);font-size:11px;margin-top:4px}
+.pitch-grid-section{max-width:1280px;margin:0 auto;padding:0 clamp(18px,4vw,64px) 96px}
+.pitch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px}
+.pitch-card{background:var(--snow);border:1px solid var(--line);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:12px}
+.pitch-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pitch-card-head h3{font:400 26px var(--font-sans);letter-spacing:-.03em}
+.pitch-line{font-size:14px;font-weight:600;margin:0;line-height:1.45}
+.pitch-body{color:var(--slate);font-size:13px;margin:0;line-height:1.62}
+.pitch-proof{font-size:12px;margin:0;padding-left:12px;border-left:2px solid var(--wood);color:var(--charcoal)}
+.pitch-card .text-link{margin-top:auto}
+
+@media(max-width:1080px){
+  .pitch-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .pitch-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}

@@ -8,6 +8,23 @@
 "Wherever applicable, there's a [Find] button. It looks at the meta-data of
 where it's coming from, logs it as a permanent opportunity until satisfied."
 
+## Two-part delivery — the placement is the collision
+
+This ticket's button belongs on **five surfaces owned by other agents** (Buy,
+Rent, Plans, Communicate, and the listing detail page). Editing five other
+agents' files is exactly what the anti-clobber rule forbids, so the work
+splits:
+
+- **280a — the mechanism.** `components/find/FindButton.tsx`, the capture
+  action, the confirm step, the seeker's Find list, and `/find/new`. Touches
+  only files this ticket owns. **Ship this first, alone.**
+- **280b — the placement.** A single registrar pass that drops `<FindButton>`
+  into the five surfaces in one commit, after 280a has landed and after those
+  surfaces are otherwise stable.
+
+Do **not** let five surface agents each add the button. One pass, one commit,
+one reviewer.
+
 ## Scope
 - A reusable `<FindButton>` placed on: an empty Buy result, a listing that is
   sold or unavailable, a plan step, a rental with no local supply, a thread.

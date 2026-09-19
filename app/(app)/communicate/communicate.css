@@ -1,0 +1,36 @@
+/* ===========================================================================
+   Communicate — inbox, threads, bulletin
+
+   Owned by the ticket(s) that build this surface. `app/globals.css` holds the
+   design tokens and the SHARED primitives (buttons, notices, status chips,
+   rows, tables, forms) and belongs to the sequential registrar — put
+   surface-specific rules here instead, so parallel agents do not contend on
+   one stylesheet.
+
+   Imported by: app/(app)/communicate/page.tsx
+   =========================================================================== */
+
+/* --- Communicate --------------------------------------------------------- */
+
+.comms-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(280px,.85fr);gap:clamp(24px,3vw,48px);align-items:start}
+.thread-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.thread-row a{display:block;background:var(--snow);border:1px solid var(--line);border-radius:var(--radius);padding:15px 17px;text-decoration:none}
+.thread-row a:hover{border-color:#c8c0b2}
+.thread-row.unread a{border-left:3px solid var(--forest)}
+.thread-subject{display:inline-block;color:var(--wood);font-size:10px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.thread-row strong{display:block;font-size:14px}
+.thread-row p{color:var(--slate);font-size:12px;margin:5px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thread-meta{display:block;color:var(--slate);font-size:11px;margin-top:8px}
+.comms-bulletin{background:var(--snow);border:1px solid var(--line);border-radius:12px;padding:20px;display:grid;gap:14px;position:sticky;top:96px}
+.comms-bulletin .section-heading{margin:0}
+.bulletin-list{display:grid;gap:14px}
+.bulletin-post{border-bottom:1px solid var(--line);padding-bottom:14px}
+.bulletin-post:last-child{border-bottom:0;padding-bottom:0}
+.bulletin-post h3{font:400 15px var(--font-sans);margin:6px 0 0}
+.bulletin-post p{color:var(--slate);font-size:12px;margin:5px 0 0}
+.post-meta{display:flex;gap:8px;align-items:center;color:var(--slate);font-size:11px}
+
+@media(max-width:1080px){
+  .comms-layout{grid-template-columns:1fr}
+  .comms-bulletin{position:static}
+}

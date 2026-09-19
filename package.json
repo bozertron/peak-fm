@@ -13,7 +13,8 @@
     "db:generate": "drizzle-kit generate",
     "db:check": "node --env-file-if-exists=.env.local scripts/db-migrate.mjs --check",
     "db:seed": "node --env-file-if-exists=.env.local scripts/db-seed.mjs",
-    "smoke": "node scripts/smoke-test.mjs"
+    "smoke": "node scripts/smoke-test.mjs",
+    "check:links": "node scripts/check-links.mjs"
   },
   "dependencies": {
     "@vercel/analytics": "1.6.1",

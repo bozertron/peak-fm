@@ -9,8 +9,15 @@
 "A full featured Build Product Presentation with file picker + Camera option so
 the user can take a photo on a mobile device *directly into the presentation*."
 
+## Depends on the shared composer
+
+**PEAK-222 builds the composer. This ticket configures it for `kind: 'sale'`**
+and owns the Sell surface around it. Do not build a second composer — three
+other tickets consume the same one, and the pressure test flagged four-way
+contention on it as the worst collision in the backlog.
+
 ## Scope
-- Multi-step composer, saving a `draft` listing continuously so nothing is lost.
+- Configure the composer for sale listings, goods and service.
 - Media: file picker **and** a live camera capture path using `getUserMedia`,
   writing `listing_media.capturedInApp = true`. On a phone the camera is the
   primary path, not a fallback.

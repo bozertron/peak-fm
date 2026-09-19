@@ -5,23 +5,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { authClient } from '@/lib/auth-client'
 import { AccountGraphic } from '@/components/account-graphic'
+import { SURFACES } from '@/lib/surfaces'
 
-/**
- * The header calls the focus of the tools and the intent of the target user.
- *
- * Order is fixed and specified: the `peak` wordmark stays where it is, then
- * seven verbs, then Account. Each verb is one intent, not one feature area —
- * which is why Find sits beside Buy rather than inside it.
- */
-export const SURFACES = [
-  { href: '/buy', label: 'Buy', flag: 'surface.buy' },
-  { href: '/sell', label: 'Sell', flag: 'surface.sell' },
-  { href: '/rent', label: 'Rent', flag: 'surface.rent' },
-  { href: '/trade', label: 'Trade', flag: 'surface.trade' },
-  { href: '/find', label: 'Find', flag: 'surface.find' },
-  { href: '/plans', label: 'Plans', flag: 'surface.plans' },
-  { href: '/communicate', label: 'Communicate', flag: 'surface.communicate' },
-] as const
 
 export type HeaderUser = {
   name: string
