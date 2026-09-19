@@ -20,3 +20,6 @@ next-env.d.ts
 # Local dev database credentials
 .env.local
 smoke-*.png
+
+# Test run artifacts
+.vitest/
