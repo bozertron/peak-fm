@@ -1,7 +1,7 @@
 # peak-cloud — Live Backlog
 
 The implementation backlog for Peak as a **local-market cloud application**.
-Supersedes `../archive/peak-rentals/` in full.
+Supersedes the previous `AREA-1xx` backlog in full; see `../HISTORY.md`.
 
 ## Before you write anything
 

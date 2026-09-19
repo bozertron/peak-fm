@@ -1,6 +1,6 @@
 # Peak — Product Specification
 
-**Status:** Authoritative. Supersedes everything in `docs/archive/`.
+**Status:** Authoritative. The single source of truth for what Peak is.
 **Last updated:** 2026-09-18
 
 ---
@@ -33,7 +33,7 @@ That question governs three rules that bind the whole product.
 1. **A signed-out visitor must see real supply.** The pitch cannot be gated
    behind a social graph or a sign-up wall. This is why the vouch-chain
    visibility model in the archived backlog was demoted (see
-   `tickets/archive/SUPERSESSION-LEDGER.md` §1.3).
+   `tickets/HISTORY.md` §1.3).
 2. **Nothing on the pitch may be invented.** Counts are live queries. An empty
    market says it is empty. A pitch built on fake inventory breaks the first
    time somebody taps it.
@@ -215,4 +215,4 @@ The Daily Yoddle · The Mountain Horn · Good Gear · Discovery · Good People �
 The GREAT Community! · Lexicon · peak → flow · "trusted circle" as an access
 gate · "The Champagne of Community Commerce"
 
-Rationale and replacements: `tickets/archive/SUPERSESSION-LEDGER.md` §1.2.
+Rationale and replacements: `tickets/HISTORY.md` §1.2.

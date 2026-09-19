@@ -20,15 +20,19 @@ peak   Buy   Sell   Rent   Trade   Find   Plans   Communicate        [Account]
 Then the live backlog: [`../tickets/peak-cloud/`](../tickets/peak-cloud/) — and
 before writing a line of code, [`../tickets/doctrine/PROHIBITED.txt`](../tickets/doctrine/PROHIBITED.txt).
 
-## `archive/`
+## History
 
-Five documents from the previous direction. They describe **Prisma, NextAuth and
-Stripe Connect, none of which exist in this repository**, a trust-network
-visibility model that has been demoted, and a design system that was never
-built.
+The five documents from the previous product direction were **deleted** on
+2026-09-19. They described Prisma, NextAuth and Stripe Connect — none of which
+exist in this repository — and an agent wave would have read them as
+instructions.
 
-They are kept as history. **Do not implement from them.** What carried forward
-and what did not: [`../tickets/archive/SUPERSESSION-LEDGER.md`](../tickets/archive/SUPERSESSION-LEDGER.md).
+What they concluded, and what carried forward, is recorded self-contained in
+[`../tickets/HISTORY.md`](../tickets/HISTORY.md). The files themselves remain
+in git history at commit `092b94e`.
+
+**Everything in `docs/` is current.** If a document here disagrees with the
+code, the code is right and the document is a bug — say so.
 
 ## Running it
 

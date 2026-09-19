@@ -3,7 +3,9 @@
 **For:** the agent team taking Peak from working foundation to beta-ready.
 **From:** the scaffolding and planning wave, 2026-09-18.
 **Repo:** `bozertron/peak-fm` · branch `claude/local-market-cloud-redesign-efn8mq`
-**Commit you are starting from:** `092b94e`
+**Commit you are starting from:** see `git log` on the branch — the handoff is
+whatever is at its head, and the cleanup pass of 2026-09-19 is part of it.
+**Open PR:** https://github.com/bozertron/peak-fm/pull/1
 
 Read this document in full before your first tool call. It is the contract.
 
@@ -77,15 +79,15 @@ and it is right. The differences that matter:
   Copy the pattern.
 - `pgTable`'s third argument takes an **array**; the object form is deprecated.
 
-### 2.2 Tailwind is configured but not active
+### 2.2 There is no Tailwind. Do not add one.
 
-`postcss.config.mjs` loads `@tailwindcss/postcss` and `components.json`
-describes shadcn — but **`app/globals.css` never imports Tailwind, so no utility
-classes are generated at all**. `components/ui/button.tsx` is pure Tailwind and
-would render unstyled. It is imported nowhere.
+Tailwind was configured but never imported, so it generated zero utility
+classes. The whole stack was removed on 2026-09-19 (decision D2, closed).
 
-Per rule 9 it was not deleted. **Do not use it, do not delete it, do not add
-shadcn components** until **D2** is answered.
+**Styling means writing CSS in `app/globals.css`**, which is the sequential
+registrar's file — see §7.3. A Tailwind class in a diff is a review rejection,
+not a preference. Reintroducing a utility framework is a new decision and a
+migration ticket.
 
 ---
 
@@ -162,7 +164,6 @@ Stated so nothing looks more finished than it is:
    (PEAK-241).
 4. **`beta_feedback` and `moderation_report` are readable and resolvable in
    admin, but nothing creates rows** (PEAK-242, PEAK-243).
-5. **`components/ui/button.tsx` is orphaned** and would render unstyled (D2).
 
 ---
 
@@ -205,7 +206,6 @@ pick an answer and proceed.**
 | ID | Question | Blocks |
 |---|---|---|
 | **D1** | PROHIBITED: doctrine says 11 rules, the file has 10 + a closer | **the first governed wave — everything** |
-| **D2** | Tailwind/shadcn: adopt or remove | any new shadcn component |
 | **D3** | Hosting target | PEAK-250 |
 | **D4** | Does Peak hold funds or facilitate? | PEAK-231 |
 | **D5** | BC tax: calculate, collect, or record? | tax fields of PEAK-212 |
@@ -235,7 +235,9 @@ here:
 - **Rule 6 — no "done" without proof.** Run the real command, paste the real
   output.
 - **Rule 9 — an orphan is unwired code, not dead code.** Find its home before
-  you touch it. `components/ui/button.tsx` is the live example (D2).
+  you touch it. Every orphan that existed at handoff has now been resolved —
+  either wired up or deliberately deleted with the reason recorded in
+  `tickets/HISTORY.md`. **A new orphan in your diff is yours to explain.**
 - **Rule 10 — read fully before integrating.** Files under 1500 lines get read
   entirely.
 
@@ -301,8 +303,10 @@ as intended, not a bug.
 
 ## 9. The five things most likely to go wrong
 
-1. **Implementing from `docs/archive/`.** It describes Prisma, NextAuth and a
-   trust-gated visibility model. None of it is real here. Use `docs/`.
+1. **Reaching for a dependency that used to be here.** Tailwind, shadcn,
+   lucide-react, leaflet and clsx were all removed on 2026-09-19 because
+   nothing imported them. If you find a tutorial or an old commit using them,
+   that is history, not guidance. Everything current is in `docs/`.
 2. **Adding a conversion path from Find to Buy.** The absent column is the
    enforcement. Adding one silently breaks the product's clearest rule.
 3. **Seeding sample listings to make a screen look alive.** Rule 3. The empty

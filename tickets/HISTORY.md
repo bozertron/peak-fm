@@ -1,14 +1,19 @@
-# Supersession Ledger — peak-rentals → peak-cloud
+# History — what changed and why
 
-**Date:** 2026-09-18
+**Date:** 2026-09-18 (records deleted 2026-09-19)
 **Trigger:** Product direction change. Peak returns to its roots as a
 **local-market cloud application** targeting Big White and the surrounding
 Okanagan. The header now calls the tools and the intent of the target user
 directly: Buy, Sell, Rent, Trade, Find, Plans, Communicate, Account.
 
-Every ticket under `archive/peak-rentals/` is superseded. This ledger records
-what died, what survived, and where each surviving thing now lives. Nothing was
-deleted.
+The previous backlog (`AREA-101` .. `AREA-113`) and its five governing
+documents have been **deleted** from the working tree. They described a stack
+this repository does not use and a product direction that no longer applies,
+and a rolling agent wave would have read them as instructions.
+
+This file is the surviving record. It is deliberately self-contained: it
+restates what those documents concluded rather than linking to them. The files
+themselves remain recoverable in git history at commit `092b94e`.
 
 ---
 
@@ -74,20 +79,25 @@ is not carried into the cloud schema.
 
 ## 2. What survives, and where it lives now
 
-| Surviving artifact | Old home | New home | Status |
-|---|---|---|---|
-| `PROHIBITED.txt` (10 rules + STAY SHORT) | `peak-rentals/doctrine/` | `tickets/doctrine/` | **Live, verbatim, unchanged** |
-| Agent orchestration protocol | `peak-rentals/AREA-107...md` | `tickets/doctrine/AREA-107-agent-orchestration-protocol.md` | **Live.** Governs the cloud execution wave |
-| Ticket template | `peak-rentals/templates/` | `tickets/templates/` | Live |
-| Sign-in 500 reproduction scripts + logs | `peak-rentals/evidence/` | `tickets/evidence/` | **Live.** Still the auth health oracle |
-| Self-hosted typography (AREA-113) | wave-3 | Already implemented in `app/globals.css` | **Shipped.** Kept as-is |
-| Preservation-first discipline | README operating rules | `tickets/peak-cloud/README.md` | Live, restated |
+| Surviving artifact | Where it lives now | Status |
+|---|---|---|
+| `PROHIBITED.txt` (10 rules + STAY SHORT) | `tickets/doctrine/` | **Live, verbatim, unchanged** |
+| Agent orchestration protocol (was AREA-107) | `tickets/doctrine/AREA-107-agent-orchestration-protocol.md` | **Live.** Governs the execution wave |
+| Ticket template | `tickets/templates/` | Live |
+| Self-hosted typography (was AREA-113) | Implemented in `app/globals.css` | **Shipped** |
+| Sign-in 500 root cause (was AREA-109) | Restated in `PEAK-201` and `PEAK-250` | **Live as a requirement**, not as evidence |
+| Preservation-first discipline | `tickets/peak-cloud/README.md` | Live, restated |
+
+The AREA-109 reproduction scripts were deleted with the rest. They probed a
+failure whose root cause is now fixed and permanently guarded by the stage-3
+verification in `scripts/db-migrate.mjs`. The guard is the artifact worth
+keeping; the probe was scaffolding.
 
 ### 2.1 The AREA-109 finding still binds
 
 AREA-109 established that **no deploy step ever creates the database tables**,
-and that `GET /api/auth/ok` is a zero-cost health oracle. Both still hold, and
-both matter more now that the target is a hosted URL with beta testers on it.
+and nothing detected it because nothing checked. That still holds, and it
+matters more now that the target is a hosted URL with beta testers on it.
 
 The cloud work addresses it directly: `scripts/db-migrate.mjs` now applies
 domain migrations as well as the Better Auth schema, tracked in a
@@ -116,6 +126,27 @@ eleventh rule has been written. The closer has not been promoted to rule 11.
 
 This is recorded as **D1** in `tickets/peak-cloud/OPEN-DECISIONS.md` and it
 gates the first governed agent wave exactly as it did before.
+
+---
+
+## 3a. Deleted on 2026-09-19
+
+A cleanup pass removed everything that could mislead an agent wave, plus the
+code it left stranded:
+
+| Deleted | Why |
+|---|---|
+| `docs/archive/` (5 documents) | Described Prisma, NextAuth and Stripe Connect — none of which exist here |
+| `tickets/archive/peak-rentals/` (15 tickets) | Superseded; their conclusions are restated above |
+| `tickets/evidence/` | Probes for a closed finding, now guarded by `pnpm db:check` |
+| `components/ui/button.tsx`, `lib/utils.ts` | Orphaned; pure Tailwind, and Tailwind generated nothing |
+| `components.json`, `postcss.config.mjs` | The shadcn/Tailwind config behind that orphan |
+| `components/okanagan-map.tsx` | Demo code: hardcoded centre, one hardcoded marker, no props |
+| 5 `public/placeholder-*` assets | v0 scaffolding, referenced nowhere |
+| 13 npm packages | Transitively orphaned by the above — see `docs/PEAK-ARCHITECTURE.md` |
+
+This closed **D2** (Tailwind/shadcn) as *remove*. Peak commits to the
+hand-written CSS system documented in `docs/PEAK-DESIGN-SYSTEM.md`.
 
 ---
 

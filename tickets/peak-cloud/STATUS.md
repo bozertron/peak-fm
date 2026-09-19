@@ -54,13 +54,17 @@
 | Decision | Blocks |
 |---|---|
 | **D1** PROHIBITED rule count | the first governed agent wave — *everything* |
-| **D2** Tailwind / shadcn | any new shadcn component |
 | **D3** Hosting target | PEAK-250 |
 | **D4** Payment account model | PEAK-231 |
 | **D5** BC tax scope | the tax fields of PEAK-212 |
 | **D6** LLM provider | the LLM path of PEAK-221 |
 
 See `OPEN-DECISIONS.md`. **Do not guess these in code.**
+
+## Closed decisions
+
+**D2 (Tailwind/shadcn) closed 2026-09-19 as *remove*.** Styling means writing
+CSS in `app/globals.css`. Do not add a shadcn component or a utility class.
 
 ## Honest gaps in what is already shipped
 
@@ -73,4 +77,3 @@ Stated so nothing looks more finished than it is:
   but **nothing creates rows** (PEAK-242, PEAK-243).
 - No listing can be created through the UI yet (PEAK-220). Every surface
   therefore renders an honest empty state.
-- `components/ui/button.tsx` is orphaned and would render unstyled — **D2**.
