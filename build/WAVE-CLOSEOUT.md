@@ -122,3 +122,54 @@ dead link) are still unproven, and PEAK-208 stays PARTLY DONE.
 row and send it as `x-peak-invite-code`, so enforcement stays ON and CI proves the invite path end to end. The narrower
 alternative — turning the flag off for that job only — works but tests a configuration production will not use.
 
+## 8. The application, built and initiated — 2026-09-19
+
+Built and started on the owner's instruction, then verified against the running server. This section is the operator record.
+
+**What was done, in order:** `pnpm db:seed` (5 markets, 10 categories, 12 flags — the **first** seed this database had
+ever received, which is the whole explanation for the CI failure in §7) → `pnpm build` (clean, 14 routes) →
+`pnpm start`, detached (`setsid nohup`), log at `/tmp/peak-server.log`.
+
+**How to run it again:**
+
+```bash
+cd ~/peak-fm
+pnpm start        # serves on http://localhost:3000; stop with: pkill -f next-server
+pnpm dev          # or the dev server, same port
+```
+
+Use `http://localhost:3000`, never `127.0.0.1` — they are different origins to Better Auth and `BETTER_AUTH_URL`
+names the former.
+
+**Verified against the live server** (not inferred from a build): all 11 member routes return **200**; `/admin` returns
+**307 signed out** and **200 with a real session cookie**; `/admin` renders the live seeded flag rows and market data.
+
+**The invite gate, proven on the running application through the real endpoint:**
+
+| Attempt | Result |
+|---|---|
+| sign-up **with** a valid code | **200** + session token, and the invite row went to `redemptionCount=1` with `redeemedById`/`redeemedAt` stamped |
+| sign-up **without** a code | **403** `{"code":"INVITE_REFUSED","reason":"missing"}` |
+| sign-in afterwards | **200** + a real `better-auth.session_token` cookie |
+
+**Operator access.** A local account `admin@peak.local` exists with `role = admin`, created **through the real invite +
+sign-up path** (not by inserting a row) and promoted with the documented first-admin SQL. **Its password and the invite
+codes are deliberately NOT recorded here, or anywhere in this repository: `bozertron/peak-fm` is a PUBLIC repo.**
+Provision a fresh code in `/admin` → Invites (or toggle `beta.invite_only` off there) whenever you need access; the
+`AGENT-START-HERE.md` §4 note now carries that instruction for the next person.
+
+**What the application deliberately does not show.** No sample listings, no fake supply — rule 3. Markets, categories
+and flags are real seeded reference data; every listing-shaped surface shows its honest empty state, which is how you
+know the query layer works. All seven `surface.*` flags are **off** as seeded, so Buy/Sell/Rent/Trade/Find/Plans/
+Communicate report that they are not open; `/admin` toggles each one with no deploy. Opening a surface is a product
+call, so none was flipped.
+
+**A real isolation leak, found by auditing the dev database while doing this.** `public.beta_invite` contained one row
+coded `race-<uuid>` — the concurrency test's own code pattern. App code creates no such code (`grep` in `lib/`, `app/`,
+`components/` → 0 hits; it appears only under `tests/`), so it is test debris, and it was deleted. Everything else
+audited clean: 0 factory users, 0 factory listings, 0 factory threads, 5 markets. **This matters beyond one row:** it is
+evidence that a test process *did* at some point write through to the developer's `public` schema — the exact hazard
+`tests/setup/harness-lifecycle.test.ts` documents in its header. The mitigation that saved the other tables
+(`tests/setup/db-env.ts` throwing before any test file loads) evidently does not cover every path, which raises the
+priority of the guard named in §4: `resetTestDatabase()` should refuse to truncate when `current_schema()` is `public`.
+

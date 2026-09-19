@@ -78,6 +78,23 @@ working on:
 UPDATE "user" SET role = 'admin' WHERE email = 'you@example.com';
 ```
 
+**A fresh sign-up needs a beta invite code** (PEAK-240, landed 2026-09-19).
+`pnpm db:seed` turns `beta.invite_only` **on**, and it is enforced at the real
+sign-up endpoint — so `POST /api/auth/sign-up/email` without an
+`x-peak-invite-code` header is refused with `403 INVITE_REFUSED`. You have two
+honest ways in, and you need exactly one of them:
+
+- mint a code in `/admin` (Invites), or insert one directly, and enter it in the
+  beta-code field on `/sign-up`; or
+- switch `beta.invite_only` **off** in `/admin` → Feature flags, which takes
+  effect with no deploy (that is the flag system working as designed, not a
+  workaround).
+
+This is also why CI's smoke step needs an invite: `pnpm db:seed` runs there too,
+and its setup signs up `tester@peak.local` through the same endpoint. The
+workflow fix is parked in `build/WAVE-CLOSEOUT.md` §4 — seed an invite in the job
+and send the header, so enforcement stays on.
+
 **Use `http://localhost:3000`, never `127.0.0.1`.** They are different origins
 to Better Auth and `BETTER_AUTH_URL` names the first. You will get
 `403 INVALID_ORIGIN` otherwise — that is the trusted-origin check working, not
