@@ -25,7 +25,7 @@ headers — if this disagrees with a ticket, the ticket is right.
 | [230](PEAK-230-payment-provider-seam.md) | **1** | Payment provider seam | PEAK-200 | **DONE — verified** (W-PEAK-01a, 2026-09-19) |
 | [231](PEAK-231-stripe-connect.md) | **2** | Stripe Connect implementation | PEAK-230 | OPEN — **blocked by D4** |
 | [232](PEAK-232-in-chat-checkout.md) | **3** | In-chat checkout | PEAK-231, **PEAK-300** | OPEN |
-| [240](PEAK-240-invite-redemption.md) | **1** | Beta invite redemption | PEAK-203, PEAK-204 | **DONE — verified** (W-PEAK-01a, 2026-09-19) — enforced at the real endpoint, 13 attack classes refused |
+| [240](PEAK-240-invite-redemption.md) | **1** | Beta invite redemption | PEAK-203, PEAK-204 | **PARTLY DONE** — server-side enforcement is verified (13 attack classes refused at the real endpoint, final-use race proven), and the conditional field is implemented (`auth-form.tsx:39`); **but bar 240.A7's render proof has no artifact on disk**, so the DONE is withdrawn until a test renders it (W-PEAK-01a-closure-2) |
 | [241](PEAK-241-flag-rollout.md) | **3** | Feature flag rollout evaluation | PEAK-203 | OPEN |
 | [242](PEAK-242-beta-feedback-widget.md) | **2** | In-app beta feedback widget | PEAK-203 | OPEN |
 | [243](PEAK-243-report-creation.md) | **3** (registrar placement pass) | Member-side reporting | PEAK-203 | OPEN |
