@@ -5,7 +5,7 @@
 | **Wave** | **0** |
 | **Status** | OPEN |
 | **Area** | Platform |
-| **Depends on** | PEAK-206, PEAK-207 |
+| **Depends on** | PEAK-201, PEAK-206, PEAK-207 |
 | **Blocks** | **every ticket** (regression safety) |
 | **Blocked by decision** | — |
 | **Files you own** | `.github/workflows/**` |

@@ -8,7 +8,7 @@
 | **Depends on** | none |
 | **Blocks** | PEAK-222 → all of Sell / Rent / Trade |
 | **Blocked by decision** | **D3** (backend only) |
-| **Files you own** | `lib/storage/**` |
+| **Files you own** | `lib/storage/**`, `components/media/**` (client resize/re-encode and GPS-retention opt-in) |
 | **Risk** | cost / privacy |
 
 > **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
@@ -26,7 +26,9 @@
 ```ts
 export interface MediaStore {
   createUploadUrl(input: { userId: string; contentType: string; maxBytes: number })
-    : Promise<{ uploadUrl: string; publicUrl: string; key: string }>
+    : Promise<{ uploadUrl: string; key: string }>
+  finalizeUpload(input: { userId: string; key: string; retainGps: boolean })
+    : Promise<{ publicUrl: string }>
   delete(key: string): Promise<void>
 }
 ```
@@ -34,10 +36,15 @@ export interface MediaStore {
 - Signed, short-lived, single-use upload URLs. **Bytes never pass through the
   Next server** — a marketplace full of photos will not survive that.
 - Server-side validation of content type and size before issuing a URL.
-- Client-side resize and re-encode before upload, consistent with
-  `next.config.mjs` setting `images.unoptimized`.
-- **Strip EXIF GPS by default.** A seller photographing an item at home should
-  not publish their address. Opt-in only, and say so in the UI.
+- Client-side resize, re-encode and EXIF removal before upload, consistent with
+  `next.config.mjs` setting `images.unoptimized`; this is a performance and
+  defence-in-depth step, not the privacy boundary.
+- Direct uploads land in private quarantine. `finalizeUpload` runs at a trusted
+  server/storage boundary, removes GPS metadata unless the authenticated
+  upload explicitly opted in, and verifies the resulting object before moving
+  it to a public key and returning `publicUrl`. Unverified objects are never
+  published. A seller photographing an item at home should not publish their
+  address by accident; the retention opt-in must say so in the UI.
 - Orphan collection: media uploaded for a draft that is never published must be
   reclaimed.
 
@@ -50,6 +57,8 @@ in tests.
 ## Acceptance criteria
 - Given an oversized file, then no upload URL is issued.
 - Given a photo with GPS EXIF, then the stored file has none unless opted in.
+- Given a client that skips local processing, then finalization still prevents
+  GPS-bearing media from receiving a public URL unless retention was opted in.
 - Given an abandoned draft, then its media is reclaimed.
 - Given a signed URL, then it expires and cannot be replayed.
 

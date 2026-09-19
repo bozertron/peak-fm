@@ -8,7 +8,7 @@
 | **Depends on** | PEAK-201, PEAK-208 |
 | **Blocks** | nothing |
 | **Blocked by decision** | **D3** |
-| **Files you own** | `.github/workflows/deploy.yml`, startup assertions |
+| **Files you own** | `.github/workflows/deploy.yml`, `instrumentation.ts`, `lib/startup.ts`, `app/api/health/route.ts` |
 | **Risk** | operations |
 
 > **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
@@ -29,11 +29,12 @@ nothing checked.
 - CI: `pnpm typecheck`, `pnpm build`, `pnpm db:check` on every push.
 - **Predeploy gate: `pnpm db:migrate` then `pnpm db:check`. A non-zero exit
   fails the deploy.** Non-negotiable.
-- Startup assertion that `DATABASE_URL`, `BETTER_AUTH_SECRET` and
+- `instrumentation.ts` calls `lib/startup.ts` once at server startup to assert
+  that `DATABASE_URL`, `BETTER_AUTH_SECRET` and
   `BETTER_AUTH_URL` are all set, failing fast and loudly if not.
 - Assert `BETTER_AUTH_URL` matches the deployed origin — PEAK-204 documents what
   happens when it does not: every auth call 403s.
-- A health endpoint reporting database reachability and schema consistency.
+- `app/api/health/route.ts` reports database reachability and schema consistency.
 
 ## Blocked
 **D3** — hosting target. The gate mechanism differs between a Vercel build step

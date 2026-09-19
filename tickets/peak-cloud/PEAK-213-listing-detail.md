@@ -5,7 +5,7 @@
 | **Wave** | **2** |
 | **Status** | OPEN |
 | **Area** | Buy |
-| **Depends on** | PEAK-220 |
+| **Depends on** | PEAK-220, PEAK-221 |
 | **Blocks** | PEAK-210 |
 | **Blocked by decision** | — |
 | **Files you own** | `app/(app)/listing/**` |

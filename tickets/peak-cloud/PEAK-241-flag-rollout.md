@@ -8,7 +8,7 @@
 | **Depends on** | PEAK-203 |
 | **Blocks** | nothing |
 | **Blocked by decision** | — |
-| **Files you own** | `lib/queries/market.ts` *(flag evaluation only)* |
+| **Files you own** | `lib/queries/market.ts` (flag evaluation only), `app/admin/page.tsx` (rollout controls only), `app/admin/actions.ts` (rollout mutation and audit only) |
 | **Risk** | operations |
 
 > **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,

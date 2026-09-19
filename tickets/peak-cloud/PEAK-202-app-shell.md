@@ -8,7 +8,7 @@
 | **Depends on** | PEAK-200 |
 | **Blocks** | every surface ticket |
 | **Blocked by decision** | — |
-| **Files you own** | `app/(app)/**`, `components/surface.tsx`, `components/account-graphic.tsx` |
+| **Files you own** | `app/(app)/**` except registrar-owned `app/(app)/layout.tsx`; `components/surface.tsx`, `components/account-graphic.tsx` |
 | **Risk** | UX / accessibility |
 
 > **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,

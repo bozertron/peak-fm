@@ -18,9 +18,9 @@
  *
  * Exit codes: 0 all links resolve (or only known gaps remain), 1 otherwise.
  */
-import { readFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { join } from 'node:path'
+import ts from 'typescript'
 
 const root = process.cwd()
 const base = process.env.PEAK_BASE_URL ?? 'http://localhost:3000'
@@ -60,15 +60,129 @@ const files = execSync('git ls-files', { cwd: root })
   .split('\n')
   .filter((f) => /^(app|components)\/.*\.tsx$/.test(f))
 
+const configPath = ts.findConfigFile(root, ts.sys.fileExists, 'tsconfig.json')
+if (!configPath) throw new Error('tsconfig.json not found')
+
+const config = ts.readConfigFile(configPath, ts.sys.readFile)
+if (config.error) {
+  throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'))
+}
+
+const parsedConfig = ts.parseJsonConfigFileContent(config.config, ts.sys, root)
+const program = ts.createProgram(parsedConfig.fileNames, parsedConfig.options)
+const checker = program.getTypeChecker()
+
+const unwrap = (node) => {
+  while (
+    ts.isParenthesizedExpression(node) ||
+    ts.isAsExpression(node) ||
+    ts.isSatisfiesExpression(node) ||
+    ts.isNonNullExpression(node)
+  ) {
+    node = node.expression
+  }
+  return node
+}
+
+/** Resolve the static values of a TSX expression. Dynamic values return []. */
+const staticValues = (input, seen = new Set()) => {
+  const node = unwrap(input)
+  if (seen.has(node)) return []
+
+  if (ts.isStringLiteralLike(node)) return [node.text]
+  if (ts.isTemplateExpression(node)) {
+    const value = node.templateSpans.reduce(
+      (text, span) => `${text}\${${span.expression.getText()}}${span.literal.text}`,
+      node.head.text,
+    )
+    return [value]
+  }
+  if (ts.isConditionalExpression(node)) {
+    return [...staticValues(node.whenTrue, seen), ...staticValues(node.whenFalse, seen)]
+  }
+  if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+    const left = staticValues(node.left, seen)
+    const right = staticValues(node.right, seen)
+    return left.flatMap((a) => right.map((b) => `${a}${b}`))
+  }
+  if (ts.isArrayLiteralExpression(node)) {
+    return [node.elements.flatMap((element) => staticValues(element, seen))]
+  }
+  if (ts.isObjectLiteralExpression(node)) {
+    const object = new Map()
+    for (const property of node.properties) {
+      if (ts.isPropertyAssignment(property)) {
+        const name = property.name && ts.isComputedPropertyName(property.name)
+          ? undefined
+          : property.name.getText().replace(/^['"]|['"]$/g, '')
+        if (name) object.set(name, staticValues(property.initializer, seen))
+      } else if (ts.isShorthandPropertyAssignment(property)) {
+        object.set(property.name.text, staticValues(property.name, seen))
+      }
+    }
+    return [object]
+  }
+  if (ts.isPropertyAccessExpression(node)) {
+    return staticValues(node.expression, seen).flatMap((value) =>
+      value instanceof Map ? (value.get(node.name.text) ?? []) : [],
+    )
+  }
+  if (ts.isElementAccessExpression(node) && node.argumentExpression) {
+    const keys = staticValues(node.argumentExpression, seen)
+    return staticValues(node.expression, seen).flatMap((value) =>
+      value instanceof Map ? keys.flatMap((key) => value.get(String(key)) ?? []) : [],
+    )
+  }
+  if (!ts.isIdentifier(node)) return []
+
+  let symbol = checker.getSymbolAtLocation(node)
+  if (!symbol) return []
+  if (symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol)
+
+  const nextSeen = new Set(seen).add(node)
+  return (symbol.declarations ?? []).flatMap((declaration) => {
+    if (ts.isVariableDeclaration(declaration) && declaration.initializer) {
+      return staticValues(declaration.initializer, nextSeen)
+    }
+    if (ts.isParameter(declaration)) {
+      const callback = declaration.parent
+      const call = callback.parent
+      if (
+        (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) &&
+        ts.isCallExpression(call) &&
+        ts.isPropertyAccessExpression(call.expression) &&
+        call.expression.name.text === 'map' &&
+        callback.parameters[0] === declaration
+      ) {
+        return staticValues(call.expression.expression, nextSeen).flatMap((value) =>
+          Array.isArray(value) ? value : [],
+        )
+      }
+    }
+    return []
+  })
+}
+
 /** Collect hrefs, normalising template interpolation to a `:id` placeholder. */
 const found = new Map()
 for (const file of files) {
-  const text = readFileSync(join(root, file), 'utf8')
-  const hrefs = [
-    ...[...text.matchAll(/href="(\/[^"]*)"/g)].map((m) => m[1]),
-    ...[...text.matchAll(/href=\{`(\/[^`]*)`\}/g)].map((m) => m[1]),
-  ]
+  const source = program.getSourceFile(join(root, file))
+  if (!source) throw new Error(`TypeScript did not load ${file}`)
+
+  const hrefs = []
+  const visit = (node) => {
+    if (ts.isJsxAttribute(node) && node.name.getText() === 'href' && node.initializer) {
+      const expression = ts.isJsxExpression(node.initializer)
+        ? node.initializer.expression
+        : node.initializer
+      if (expression) hrefs.push(...staticValues(expression))
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+
   for (const raw of hrefs) {
+    if (typeof raw !== 'string' || !raw.startsWith('/')) continue
     // `/listing/${item.id}` -> `/listing/:id`; drop the query string.
     const path = raw.replace(/\$\{[^}]*\}/g, ':id').split('?')[0].replace(/\/$/, '') || '/'
     if (!found.has(path)) found.set(path, new Set())
@@ -98,7 +212,7 @@ for (const [path, sources] of [...found].sort()) {
   const good = typeof status === 'number' && status < 400
   if (good) {
     ok.push(path)
-  } else if (KNOWN_MISSING.has(path)) {
+  } else if (status === 404 && KNOWN_MISSING.has(path)) {
     knownGaps.push([path, KNOWN_MISSING.get(path), status])
   } else {
     broken.push([path, [...sources], status])

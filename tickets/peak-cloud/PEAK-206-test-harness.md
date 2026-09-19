@@ -5,10 +5,10 @@
 | **Wave** | **0** |
 | **Status** | OPEN |
 | **Area** | Platform |
-| **Depends on** | none |
+| **Depends on** | PEAK-201 |
 | **Blocks** | **every ticket that must write a test** |
 | **Blocked by decision** | — |
-| **Files you own** | `tests/**`, `vitest.config.ts` or equivalent |
+| **Files you own** | `tests/**`, `vitest.config.ts` or equivalent; registrar request for `package.json` test scripts and runner dependencies |
 | **Risk** | quality at scale |
 
 > **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
@@ -19,6 +19,10 @@
 > `components/thread/registry.ts` **once PEAK-300 lands** — until then they
 > belong to the ticket building them. Surface-specific CSS goes in your
 > surface's own stylesheet, never in `globals.css`.
+
+PEAK-206 owns the test-runner choice and must give the sequential registrar the
+exact `package.json` scripts and dependency versions to apply; that registrar
+edit is part of completing this ticket.
 
 ## Why this is first
 

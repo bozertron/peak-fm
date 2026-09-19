@@ -8,7 +8,7 @@
 | **Depends on** | none |
 | **Blocks** | **every ticket** (review cost) |
 | **Blocked by decision** | — |
-| **Files you own** | lint/format config at the repo root |
+| **Files you own** | lint/format config at the repo root, `README.md`; registrar request for `package.json` lint/format scripts and tool dependencies |
 | **Risk** | review cost at scale |
 
 > **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
@@ -19,6 +19,10 @@
 > `components/thread/registry.ts` **once PEAK-300 lands** — until then they
 > belong to the ticket building them. Surface-specific CSS goes in your
 > surface's own stylesheet, never in `globals.css`.
+
+PEAK-207 owns the tool choice, the `README.md` definition-of-done update, and
+the exact scripts and dependency versions sent to the sequential registrar;
+the registrar's `package.json` edit is part of completing this ticket.
 
 ## Why this is first
 

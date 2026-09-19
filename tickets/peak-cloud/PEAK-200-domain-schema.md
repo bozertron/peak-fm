@@ -8,7 +8,7 @@
 | **Depends on** | none |
 | **Blocks** | everything |
 | **Blocked by decision** | — |
-| **Files you own** | `lib/db/schema/**` |
+| **Files you own** | `lib/db/schema/**` except registrar-owned `lib/db/schema/index.ts` |
 | **Risk** | data |
 
 > **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,

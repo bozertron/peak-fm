@@ -8,7 +8,7 @@
 | **Depends on** | PEAK-203 |
 | **Blocks** | nothing |
 | **Blocked by decision** | — |
-| **Files you own** | `components/feedback/**` |
+| **Files you own** | `components/feedback/**`; registrar request for `app/(app)/layout.tsx` registration |
 | **Risk** | low |
 
 > **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
@@ -29,6 +29,10 @@ A persistent control on every surface, open to signed-in users. Kind: bug,
 confusion, idea, praise. Captures `surface`, and automatically the route,
 viewport and user agent into `context` — a bug report without the route is
 usually unusable. Appears immediately in the admin dashboard.
+
+PEAK-242 supplies the widget; the sequential registrar mounts it once in
+`app/(app)/layout.tsx` so every member surface receives it. That registrar edit
+is part of completing the ticket and must not be replaced with per-page mounts.
 
 ## Acceptance criteria
 - Given a submission from `/buy?category=tools-equipment`, then `context`

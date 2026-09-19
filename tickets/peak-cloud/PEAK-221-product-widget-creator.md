@@ -6,9 +6,9 @@
 | **Status** | OPEN — manual path unblocked, **LLM path blocked by D6** |
 | **Area** | Sell |
 | **Depends on** | **PEAK-222** |
-| **Blocks** | nothing |
+| **Blocks** | PEAK-213 |
 | **Blocked by decision** | **D6** (LLM path only) |
-| **Files you own** | `lib/llm/**`, the service-widget composer section |
+| **Files you own** | `lib/llm/**`, `components/service-widget/**` (integration entry: `components/service-widget/composer-section.tsx`) |
 | **Risk** | cost / trust / UX |
 
 > **Never edit a registrar file.** `app/globals.css`, `lib/surfaces.ts`,
@@ -28,9 +28,12 @@ individual's house-cleaning service can book it there and then.
 
 ## Depends on the shared composer
 
-The widget is a composer section supplied by this ticket, rendered by
-**PEAK-222**'s composer. Build the section and the booking tool in this
-ticket's own files.
+The widget is a composer section exported from this ticket's exact integration
+file, `components/service-widget/composer-section.tsx`, and rendered through
+**PEAK-222**'s public `ComposerSection` extension point. Build the section UI
+and booking tool under `components/service-widget/**`; do not modify anything
+under the registrar-owned `components/composer/**`. If the extension point is
+insufficient, send that composer change through the sequential registrar.
 
 ## Scope
 - LLM drafts `service_widget.headline` and `overview` from what the seller has

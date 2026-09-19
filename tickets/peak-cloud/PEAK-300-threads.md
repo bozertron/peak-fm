@@ -7,7 +7,7 @@
 | **Area** | Communicate |
 | **Depends on** | PEAK-200, PEAK-202 |
 | **Blocks** | **PEAK-211, PEAK-232, PEAK-270, PEAK-290** |
-| **Blocked by decision** | — |
+| **Blocked by decision** | **D3** (real-time transport) |
 | **Files you own** | `app/(app)/communicate/**`, `components/thread/**`, `lib/queries/communicate.ts` |
 | **Risk** | privacy / performance |
 
